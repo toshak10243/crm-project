@@ -1,68 +1,360 @@
-Enterprise Multi-Tenant Lead Management & CRM SystemA production-grade, zero-cost architecture Lead Management CRM built with strict database isolation per tenant, dynamic form rendering via PostgreSQL JSONB, granular role-based access control (RBAC), and a modern enterprise UI.What is this Project?This system is an isolated multi-tenant CRM designed for B2B client management. Unlike traditional shared-table multi-tenancy where all tenants share the same tables and filter via tenant_id, this system uses a Dedicated Database per Tenant strategy.Core Operational HierarchySuper Admin (Platform Owner)
-    └── Admin (Tenant / Client Organization Owner)
-            └── Users (Sales Agents / Team Managers)
-Super Admin:Manages client organizations manually upon offline payment confirmation.Triggers dynamic database creation: CREATE DATABASE crm_client_{slug}.  Controls activation/suspension of tenant databases.  Admin (Tenant Owner):Manages their dedicated instance, sales pipelines, custom lead forms, team members, and role permissions.  Enforces first-login mandatory password resets.  Users (Agents & Managers):Handle lead ingestion, follow-ups, quotations, deal lifecycles, and conversions.  Tech Stack & Zero-Cost ArchitectureLayerTechnologyRationaleBackendNestJS (TypeScript)Scalable modular framework, dependency injection, and guards.  DatabasePostgreSQLRaw SQL via pg & pg-pool. Full query control, zero ORM overhead.  Caching & QueuesRedis + BullMQTenant connection caching, rate limiting, and async jobs.  FrontendReact 19 + TypeScript + ViteBlazing fast enterprise single-page application.  UI ComponentsTailwind CSS + Radix UI + LucideHigh-density, accessible MNC-standard design system.  State ManagementZustand + TanStack QueryClient state and optimized server-state caching.  Project Structurecrm-project/
-├── backend/                  # NestJS API Gateway & Multi-Tenant Services
-│   ├── scripts/              # Master DB initialization scripts
-│   ├── sql/
-│   │   ├── master/           # Master schema (companies & super admin)
-│   │   └── tenant/           # Tenant baseline schema (leads, users, forms)
-│   ├── src/
-│   │   ├── common/           # Guards, Decorators, Dynamic Tenant Pool Manager
-│   │   ├── config/           # Environment configuration
-│   │   └── modules/          # Super-Admin, Auth, Users, Leads modules
-│   └── .env
-│
-├── frontend/                 # Vite + React 19 SPA
-│   ├── src/
-│   │   ├── components/       # Layouts, Navigation, and UI components
-│   │   ├── pages/            # Super Admin & Tenant dashboards, Auth screens
-│   │   ├── router/           # Protected routing and guards
-│   │   └── store/            # Global Zustand auth stores
-│   └── tailwind.config.js
-│
-└── README.md
-PrerequisitesEnsure you have the following installed on your system:Node.js: v20+ or v24+  pnpm: v10+ or v11+  PostgreSQL: v15+ running locally on port 5432  Redis: Running locally on port 6379  Local Setup & Installation1. Clone the RepositoryBashgit clone https://github.com/toshak10243/crm-project.git
-cd crm-project
-2. Backend SetupStep A: Configure Environment VariablesCreate a .env file inside the backend/ directory:Code snippet# Master Database Configuration (Master DB for companies metadata)
+# CRM Lead Management System
+
+A full-featured Lead Management CRM built for businesses to manage their leads, clients, quotations, and sales pipeline. This is a production-grade CRM system — not a demo project.
+
+---
+
+## What is this?
+
+This CRM helps businesses:
+- Capture leads from multiple sources (website, WhatsApp, IndiaMART, Meta Ads, etc.)
+- Track leads through a sales pipeline
+- Auto-assign leads to sales agents
+- Manage follow-ups, tasks, and communications
+- Create and send quotations
+- Convert leads to clients
+- Handle invoices and payments
+- Run automated workflows
+- Get reports and analytics
+
+---
+
+## Who uses this?
+
+```
+Super Admin (Us — the CRM owner)
+    └── Admin (Our client — the business owner)
+            └── Users/Agents (Admin ki team)
+```
+
+- **Super Admin** — Manually creates company accounts when payment is received. No payment gateway needed.
+- **Admin** — Gets login credentials, manages their own team and leads.
+- **Users/Agents** — Work under Admin, handle leads daily.
+
+Each company gets their **own separate database** — complete data isolation.
+
+---
+
+## Tech Stack
+
+| Part | Technology |
+|---|---|
+| Frontend | React 18 + TypeScript + Vite |
+| UI | shadcn/ui + Tailwind CSS v3 |
+| State Management | Zustand |
+| API Calls | TanStack Query (React Query v5) |
+| Forms | React Hook Form + Zod |
+| Charts | Recharts |
+| Realtime | Socket.io |
+| Backend | NestJS + TypeScript |
+| Database | PostgreSQL (raw SQL — no ORM) |
+| Cache & Queue | Redis + BullMQ |
+| Auth | JWT (Access + Refresh tokens) |
+| File Storage | Local disk (Phase 1) |
+| Email | Nodemailer (SMTP) |
+| PDF | Puppeteer |
+
+---
+
+## Project Structure
+
+```
+crm-project/
+├── backend/          # NestJS API server
+├── frontend/         # React web app
+└── README.md         # This file
+```
+
+---
+
+## Prerequisites
+
+Make sure you have these installed before running the project:
+
+- **Node.js** v20 or higher — https://nodejs.org
+- **pnpm** — `npm install -g pnpm`
+- **PostgreSQL** v15 or higher — https://www.postgresql.org/download
+- **Redis** v7 or higher — https://redis.io/download (Windows: use Redis via WSL or Docker)
+- **Git** — https://git-scm.com
+
+---
+
+## Database Setup
+
+### Step 1 — Start PostgreSQL
+
+Make sure PostgreSQL is running on your machine on port `5432`.
+
+### Step 2 — Create Master Database
+
+Open pgAdmin or psql and run:
+
+```sql
+CREATE DATABASE crm_master;
+```
+
+This is the only database you create manually. All client databases are created automatically by the system.
+
+### Step 3 — Redis
+
+Make sure Redis is running on port `6379`.
+
+---
+
+## Backend Setup
+
+```bash
+# Go to backend folder
+cd backend
+
+# Install dependencies
+pnpm install
+
+# Create environment file
+copy .env.example .env
+# (Edit .env with your database credentials)
+
+# Run SQL migrations (creates tables in crm_master)
+pnpm run migrate
+
+# Create first Super Admin account
+pnpm run seed:super-admin
+
+# Start development server
+pnpm run start:dev
+```
+
+Backend will run on: `http://localhost:3001`
+
+---
+
+## Frontend Setup
+
+```bash
+# Go to frontend folder
+cd frontend
+
+# Install dependencies
+pnpm install
+
+# Create environment file
+copy .env.example .env
+
+# Start development server
+pnpm run dev
+```
+
+Frontend will run on: `http://localhost:5173`
+
+---
+
+## Environment Variables
+
+### Backend `.env`
+
+```env
+# App
+PORT=3001
+NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
+
+# Master Database (crm_master)
 MASTER_DB_HOST=localhost
 MASTER_DB_PORT=5432
 MASTER_DB_NAME=crm_master
 MASTER_DB_USER=postgres
-MASTER_DB_PASSWORD=your_actual_postgres_password
+MASTER_DB_PASSWORD=your_postgres_password
 
-# Redis Configuration (For cache and queues)
+# Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
 
-# JWT Secrets (Tokens generate karne ke liye secrets)
-JWT_ACCESS_SECRET=your_super_secret_access_key_min_32_chars_123
-JWT_REFRESH_SECRET=your_super_secret_refresh_key_min_32_chars_456
+# JWT Secrets (change these in production — use long random strings)
+JWT_ACCESS_SECRET=your-access-secret-min-32-characters-long
+JWT_REFRESH_SECRET=your-refresh-secret-min-32-characters-long
 JWT_ACCESS_EXPIRES=15m
 JWT_REFRESH_EXPIRES=30d
 
-# Initial Super Admin Seed Credentials (Pehli baar login karne ke liye)
+# First Super Admin Account
 SUPER_ADMIN_EMAIL=superadmin@yourcrm.com
-SUPER_ADMIN_PASSWORD=SuperSecurePass123!
+SUPER_ADMIN_PASSWORD=SuperSecurePassword@123
 
-# App Configuration
-PORT=3001
-FRONTEND_URL=http://localhost:5173
-NODE_ENV=development
-Step B: Install Dependencies & Run MigrationsBashcd backend
+# Email (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your@gmail.com
+SMTP_PASS=your-app-password
 
-# Dependencies install karein
-pnpm install
+# File Uploads
+UPLOAD_DIR=./uploads
+MAX_FILE_SIZE=10485760
+```
 
-# Master DB create karein aur Super Admin seed karein
-npx ts-node scripts/init-master.ts
+### Frontend `.env`
 
-# Backend development server start karein
-pnpm run start:dev
-The backend server will run on http://localhost:3001/api.3. Frontend SetupStep A: Install DependenciesBashcd ../frontend
+```env
+VITE_API_URL=http://localhost:3001/api
+VITE_SOCKET_URL=http://localhost:3001
+```
 
-# Frontend dependencies install karein
-pnpm install
-Step B: Start Development ServerBashpnpm run dev
-The frontend application will be live at http://localhost:5173/.How to Test the Full FlowSuper Admin Access:Visit http://localhost:5173/login.Toggle to Super Admin Portal.  Login with superadmin@yourcrm.com and SuperSecurePass123!.  Provision a New Tenant:Click Provision New Client in the Super Admin dashboard.Enter Company Name (e.g., Acme Corp), Slug (acme_corp), Admin Name, Email, and Temporary Password.NestJS will automatically create a dedicated PostgreSQL database crm_client_acme_corp, execute baseline tables, seed default pipeline stages, and create the Admin user.  Tenant Admin First-Time Login:Sign out from Super Admin.Switch to Client Login tab.  Enter Slug (acme_corp), Admin Email, and Temporary Password.  Set a permanent password on the forced reset screen.  Access the Tenant CRM Dashboard and manage users under the Team & Permissions tab.  Security Best PracticesStrict Tenant Isolation: Dynamic connection pooling prevents cross-database data leaks.  Raw Parameterized Queries: SQL injection prevention via strictly indexed parameters ($1, $2) across all modules.  Forced Password Rotation: New tenant admins and agents must update their default credentials before gaining dashboard access.  Security Headers & Sanitization: Enabled via Helmet and NestJS global validation pipes.LicenseThis project is licensed under the MIT License.
+---
+
+## How it Works — Database Architecture
+
+```
+crm_master (1 database)
+    ├── companies table       → list of all client companies
+    ├── super_admins table    → our super admin accounts
+    └── super_admin_tokens    → refresh tokens
+
+crm_client_abc_corp (per company)
+    ├── users
+    ├── leads
+    ├── clients
+    ├── quotations
+    ├── deals
+    ├── tasks
+    ├── activities
+    ├── invoices
+    ├── payments
+    ├── workflows
+    ├── notifications
+    ├── audit_logs
+    └── ... (30+ tables)
+```
+
+When Super Admin creates a new company:
+1. Entry added in `crm_master.companies`
+2. New database `crm_client_{slug}` is created automatically
+3. All tables are provisioned automatically
+4. Admin user is created with a temporary password
+5. Email sent to Admin with login credentials
+
+---
+
+## API Structure
+
+```
+http://localhost:3001/api/
+
+# Super Admin routes (only Super Admin can access)
+/super-admin/auth/login
+/super-admin/companies
+/super-admin/companies/:id/activate
+/super-admin/companies/:id/deactivate
+
+# Client Auth routes
+/auth/login
+/auth/refresh
+/auth/logout
+/auth/change-password
+
+# Main CRM routes (JWT protected)
+/leads
+/clients
+/quotations
+/deals
+/tasks
+/activities
+/users
+/reports
+/settings
+...
+```
+
+---
+
+## Build Phases
+
+This project is built in phases — one module at a time:
+
+| Phase | What we build | Status |
+|---|---|---|
+| Phase 1 | Auth, Super Admin, Company provisioning, User management | 🔄 In Progress |
+| Phase 2 | Lead management, Pipeline, Scoring, Auto assignment | ⏳ Pending |
+| Phase 3 | Follow-ups, Tasks, Communications, Notifications | ⏳ Pending |
+| Phase 4 | Quotations, Deals, Documents | ⏳ Pending |
+| Phase 5 | Clients 360°, Finance, Invoices | ⏳ Pending |
+| Phase 6 | Automation Engine, AI Assistant | ⏳ Pending |
+| Phase 7 | Reports, Masters, Settings | ⏳ Pending |
+| Phase 8 | Security (2FA, IP restriction), Polish | ⏳ Pending |
+
+---
+
+## Key Features
+
+### Dynamic Forms
+Admin can add custom fields to Lead/Client forms from the settings panel. No code change needed — fully dynamic.
+
+### Role-Based Access Control
+Granular permissions — module level, sub-module level, action level (View, Add, Edit, Delete, Export, Import, Approve).
+
+### Multi-tenant Architecture
+Every company has its own database. One company's data never touches another's.
+
+### Automation Engine
+Admin can set up workflows — e.g., "When a lead score goes above 80, auto-assign to senior agent and send WhatsApp message."
+
+### Real-time Notifications
+In-app notifications via Socket.io. Also supports Email, WhatsApp, SMS notifications.
+
+---
+
+## Scripts
+
+### Backend
+
+```bash
+pnpm run start:dev      # Start in development (auto-reload)
+pnpm run start:prod     # Start in production
+pnpm run build          # Build for production
+pnpm run migrate        # Run SQL migrations
+pnpm run seed:super-admin  # Create first super admin
+pnpm run test           # Run unit tests
+```
+
+### Frontend
+
+```bash
+pnpm run dev            # Start development server
+pnpm run build          # Build for production
+pnpm run preview        # Preview production build
+```
+
+---
+
+## Common Issues
+
+**PostgreSQL connection error**
+- Check if PostgreSQL is running
+- Check `.env` credentials match your PostgreSQL setup
+
+**Redis connection error**
+- Check if Redis is running on port 6379
+- On Windows, use WSL or Docker for Redis
+
+**pnpm not found**
+```bash
+npm install -g pnpm
+```
+
+**Port already in use**
+- Backend default: 3001 — change `PORT` in `.env`
+- Frontend default: 5173 — runs automatically on next available port
+
+---
+
+## Notes for Developers
+
+- Sab SQL queries raw likhi hain — koi ORM nahi (`$1`, `$2` parameterized queries use karo)
+- Har client ka data alag database mein hai — JWT token mein `dbName` hota hai
+- Comments Hinglish mein hain — English + Hindi mix
+- Super Admin aur Client Auth bilkul alag hain
+- Koi payment gateway nahi — Super Admin manually activate karta hai
+
+---
+
+## License
+
+Private — Internal use only. Not open source.
