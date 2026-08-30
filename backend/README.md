@@ -1,114 +1,287 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# CRM Backend — NestJS API Server
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This is the backend for the CRM Lead Management System. Built with NestJS + TypeScript + PostgreSQL (raw SQL).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## Folder Structure
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ pnpm install
+```
+backend/
+├── src/
+│   ├── main.ts                        # App entry point — server start hota hai yahan se
+│   ├── app.module.ts                  # Root module — sab modules yahan register hote hain
+│   │
+│   ├── config/
+│   │   └── env.config.ts              # Environment variables ko structured form mein export karta hai
+│   │
+│   ├── database/
+│   │   ├── db-manager.service.ts      # New client ka database create karta hai, tables provision karta hai
+│   │   └── tenant-pool.service.ts     # Har tenant ka pg connection pool cache karta hai
+│   │
+│   ├── common/
+│   │   ├── guards/
+│   │   │   ├── jwt.guard.ts           # Normal user/admin JWT verify karta hai
+│   │   │   ├── super-admin.guard.ts   # Sirf Super Admin access allow karta hai
+│   │   │   ├── roles.guard.ts         # Role check karta hai (admin, manager, agent)
+│   │   │   └── ip.guard.ts            # IP whitelist check karta hai (agar enabled ho)
+│   │   │
+│   │   ├── decorators/
+│   │   │   ├── current-user.decorator.ts   # @CurrentUser() — JWT se user info nikalata hai
+│   │   │   ├── current-db.decorator.ts     # @CurrentDb() — tenant DB pool inject karta hai
+│   │   │   └── roles.decorator.ts          # @Roles('admin') — roles set karta hai
+│   │   │
+│   │   ├── filters/
+│   │   │   └── global-exception.filter.ts  # Sab errors yahan handle hote hain — clean response deta hai
+│   │   │
+│   │   ├── interceptors/
+│   │   │   ├── response.interceptor.ts     # Sab responses ko standard format mein wrap karta hai
+│   │   │   └── audit-log.interceptor.ts    # Write operations ko audit_logs mein save karta hai
+│   │   │
+│   │   └── pipes/
+│   │       └── validation.pipe.ts          # DTO validation — galat data aane se rokta hai
+│   │
+│   ├── modules/
+│   │   ├── super-admin/               # Phase 1 — Super Admin ka poora module
+│   │   │   ├── super-admin.module.ts
+│   │   │   ├── super-admin.controller.ts
+│   │   │   ├── super-admin.service.ts
+│   │   │   └── dto/
+│   │   │       ├── login.dto.ts
+│   │   │       └── create-company.dto.ts
+│   │   │
+│   │   ├── auth/                      # Phase 1 — Client login/logout/refresh
+│   │   │   ├── auth.module.ts
+│   │   │   ├── auth.controller.ts
+│   │   │   ├── auth.service.ts
+│   │   │   ├── strategies/
+│   │   │   │   └── jwt.strategy.ts
+│   │   │   └── dto/
+│   │   │       ├── login.dto.ts
+│   │   │       └── change-password.dto.ts
+│   │   │
+│   │   ├── users/                     # Phase 1 — User management (CRUD, roles)
+│   │   │   ├── users.module.ts
+│   │   │   ├── users.controller.ts
+│   │   │   ├── users.service.ts
+│   │   │   └── dto/
+│   │   │       ├── create-user.dto.ts
+│   │   │       └── update-user.dto.ts
+│   │   │
+│   │   ├── leads/                     # Phase 2
+│   │   ├── clients/                   # Phase 5
+│   │   ├── quotations/                # Phase 4
+│   │   ├── deals/                     # Phase 4
+│   │   ├── tasks/                     # Phase 3
+│   │   ├── activities/                # Phase 3
+│   │   ├── documents/                 # Phase 4
+│   │   ├── finance/                   # Phase 5
+│   │   ├── automation/                # Phase 6
+│   │   ├── notifications/             # Phase 3
+│   │   ├── reports/                   # Phase 7
+│   │   ├── ai/                        # Phase 6
+│   │   ├── masters/                   # Phase 7
+│   │   ├── settings/                  # Phase 7
+│   │   └── integrations/              # Phase 7
+│   │
+│   └── websocket/
+│       └── notifications.gateway.ts   # Socket.io gateway — real-time notifications
+│
+├── sql/
+│   ├── master/
+│   │   └── 001_master_schema.sql      # crm_master database ki tables
+│   └── tenant/
+│       └── 001_tenant_schema.sql      # Har client database ki tables
+│
+├── uploads/                           # Uploaded files yahan store honge
+├── .env                               # Environment variables (git mein nahi aata)
+├── .env.example                       # Template — copy karke .env banao
+├── package.json
+├── nest-cli.json
+└── tsconfig.json
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ pnpm run start
+## How Tenant Database Works
 
-# watch mode
-$ pnpm run start:dev
+```
+1. Super Admin → POST /super-admin/companies { name, email, slug }
 
-# production mode
-$ pnpm run start:prod
+2. Backend kya karta hai:
+   a. crm_master.companies mein entry insert karta hai
+   b. CREATE DATABASE crm_client_{slug} run karta hai
+   c. sql/tenant/001_tenant_schema.sql us database pe run karta hai
+   d. Admin user create karta hai uss database mein
+   e. Temporary password generate karta hai
+   f. Email bhejta hai admin ko credentials ke saath
+
+3. Admin login karta hai:
+   POST /auth/login { email, password, slug: "abc-corp" }
+   
+4. Backend:
+   a. crm_master mein slug se db_name dhundta hai
+   b. Us database mein user verify karta hai
+   c. JWT banata hai — payload mein dbName hota hai
+   
+5. Har agle request pe:
+   a. JWT se dbName nikalata hai
+   b. TenantPoolService se us DB ka connection pool leta hai
+   c. Pool ko request mein inject karta hai
+   d. Controller/Service us pool se queries chalata hai
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ pnpm run test
+## API Endpoints
 
-# e2e tests
-$ pnpm run test:e2e
+### Super Admin
 
-# test coverage
-$ pnpm run test:cov
+```
+POST   /api/super-admin/auth/login           → Super Admin login
+POST   /api/super-admin/auth/refresh         → Token refresh
+GET    /api/super-admin/companies            → All companies list
+POST   /api/super-admin/companies            → New company create + DB provision
+PATCH  /api/super-admin/companies/:id/activate    → Company activate
+PATCH  /api/super-admin/companies/:id/deactivate  → Company deactivate
 ```
 
-## Deployment
+### Client Auth
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+```
+POST   /api/auth/login                       → Admin/User login
+POST   /api/auth/refresh                     → Token refresh
+POST   /api/auth/logout                      → Logout
+PATCH  /api/auth/change-password             → Password change
+GET    /api/auth/me                          → Apni profile dekho
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Users (Admin only)
 
-## Observability
+```
+GET    /api/users                            → All users list
+POST   /api/users                            → New user create
+GET    /api/users/:id                        → User detail
+PATCH  /api/users/:id                        → User update
+DELETE /api/users/:id                        → User delete
+PATCH  /api/users/:id/activate               → Activate/deactivate user
+```
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+---
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+## Response Format
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+Sab API responses is format mein aate hain:
 
-## Resources
+```json
+// Success
+{
+  "success": true,
+  "data": { ... },
+  "message": "Lead created successfully"
+}
 
-Check out a few resources that may come in handy when working with NestJS:
+// List with pagination
+{
+  "success": true,
+  "data": [ ... ],
+  "meta": {
+    "total": 150,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 8
+  }
+}
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+// Error
+{
+  "success": false,
+  "error": "VALIDATION_ERROR",
+  "message": "Email is required",
+  "statusCode": 400
+}
+```
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## JWT Token Structure
 
-## Stay in touch
+```json
+// Access Token payload
+{
+  "sub": "user-uuid-here",
+  "role": "admin",
+  "dbName": "crm_client_abc_corp",
+  "companySlug": "abc-corp",
+  "type": "access",
+  "iat": 1234567890,
+  "exp": 1234568790
+}
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## Database Queries — Raw SQL Style
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```typescript
+// ORM nahi use karte — seedha SQL likhte hain
+// $1, $2 parameterized queries use karo — SQL injection se bachav
+
+// Example — Lead dhundna
+const result = await pool.query(
+  `SELECT * FROM leads WHERE id = $1 AND is_deleted = false`,
+  [leadId]
+);
+
+// Example — Lead create karna
+const result = await pool.query(
+  `INSERT INTO leads (name, email, phone, source_id, assigned_to, created_by)
+   VALUES ($1, $2, $3, $4, $5, $6)
+   RETURNING *`,
+  [name, email, phone, sourceId, assignedTo, createdBy]
+);
+```
+
+---
+
+## Security
+
+- Passwords: `bcrypt` with cost factor 12
+- JWT: Access token (15 min) + Refresh token (30 days)
+- Refresh tokens: One-time use, stored as hash in DB
+- Rate limiting: 5 login attempts per minute per IP
+- SQL injection: Parameterized queries only
+- CORS: Only frontend URL allowed
+- Helmet: Security headers on all responses
+- IP whitelist: Optional per company (Admin configures it)
+- Audit logs: All create/update/delete operations logged
+
+---
+
+## Running the Project
+
+```bash
+# Development
+pnpm run start:dev
+
+# Production build
+pnpm run build
+pnpm run start:prod
+
+# Run tests
+pnpm run test
+
+# Setup commands
+pnpm run migrate          # SQL migrations chalao
+pnpm run seed:super-admin # Pehla super admin banao
+```
+
+---
+
+## Important Notes
+
+- Koi ORM nahi hai — TypeORM ya Prisma bilkul use nahi kiya
+- Sab tables manually SQL se banate hain (`sql/` folder mein)
+- Har module apna folder mein complete hai — loosely coupled
+- Comments Hinglish mein likhe hain throughout the code
+- `.env` file kabhi git mein push mat karo
