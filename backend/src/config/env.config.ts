@@ -30,10 +30,10 @@ export default () => ({
   },
 
   smtp: {
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT, 10) || 587,
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || '',
+    host: process.env.SMTP_HOST || process.env.MAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || process.env.MAIL_PORT || '587', 10),
+    user: process.env.SMTP_USER || process.env.MAIL_USER || '',
+    pass: process.env.SMTP_PASS || process.env.MAIL_PASS || '',
   },
 
   upload: {
@@ -44,5 +44,16 @@ export default () => ({
   superAdmin: {
     email: process.env.SUPER_ADMIN_EMAIL || 'superadmin@crm.com',
     password: process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123',
+  },
+
+  // Humari company details -- Invoice mein aayega
+  company: {
+    name: process.env.CRM_COMPANY_NAME || 'CRM System',
+    email: process.env.CRM_COMPANY_EMAIL || 'info@crmsystem.com',
+    phone: process.env.CRM_COMPANY_PHONE || '',
+    address: process.env.CRM_COMPANY_ADDRESS || '',
+    gst: process.env.CRM_COMPANY_GST || '',
+    website: process.env.CRM_COMPANY_WEBSITE || '',
+    logo: process.env.CRM_COMPANY_LOGO || 'uploads/logo.png',
   },
 });

@@ -30,6 +30,20 @@ export class TenantPoolService implements OnModuleDestroy {
     return pool;
   }
 
+  // Tenant database delete karne se pehle uska pool close karne ke liye
+  async closePool(dbName: string): Promise<void> {
+    const pool = this.pools.get(dbName);
+
+    if (!pool) {
+      return;
+    }
+
+    await pool.end();
+    this.pools.delete(dbName);
+
+    console.log(`Pool closed for database: ${dbName}`);
+  }
+
   async onModuleDestroy() {
     for (const [dbName, pool] of this.pools) {
       await pool.end();

@@ -76,6 +76,33 @@ export class DbManagerService {
       `SELECT 1 FROM pg_database WHERE datname = $1`,
       [dbName]
     );
+
     return result.rows.length > 0;
+  }
+
+  // Tenant database permanently delete karo
+  async deleteClientDatabase(dbName: string): Promise<void> {
+    // Safety check — sirf hamare CRM tenant databases allow hon
+    if (!/^crm_client_[a-z0-9_]+$/.test(dbName)) {
+      throw new Error('Invalid tenant database name');
+    }
+
+    // Pehle tenant database ke existing connections terminate karo
+    await this.masterPool.query(
+      `
+      SELECT pg_terminate_backend(pid)
+      FROM pg_stat_activity
+      WHERE datname = $1
+        AND pid <> pg_backend_pid()
+      `,
+      [dbName],
+    );
+
+    // Ab poora tenant database permanently delete karo
+    await this.masterPool.query(
+      `DROP DATABASE IF EXISTS "${dbName}"`,
+    );
+
+    console.log(`Database deleted: ${dbName}`);
   }
 }

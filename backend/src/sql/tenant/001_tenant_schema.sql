@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS users (
   role            VARCHAR(50) NOT NULL DEFAULT 'agent',
   -- 'admin' | 'manager' | 'agent'
   department_id   UUID REFERENCES departments(id) ON DELETE SET NULL,
-  phone           VARCHAR(20),
   avatar_url      VARCHAR(500),
   is_active       BOOLEAN DEFAULT true,
   must_change_password BOOLEAN DEFAULT true, -- Pehli login pe change karna padega

@@ -124,7 +124,7 @@ export class SubscriptionCronService {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     try {
-      const daysToCheck = [7, 3, 1];
+      const daysToCheck = [30, 15, 7, 3, 1];
 
       for (const days of daysToCheck) {
         const result = await pool.query(

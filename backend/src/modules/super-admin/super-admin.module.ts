@@ -8,6 +8,7 @@ import { MailService } from '../../common/services/mail.service';
 import { AuthService } from '../auth/auth.service';
 import { RedisService } from '../../common/services/redis.service';
 import { SubscriptionCronService } from './subscription.cron';
+import { InvoiceService } from '../../common/services/invoice.service';
 
 // Super Admin module -- company management, subscriptions, cron jobs
 @Module({
@@ -21,6 +22,7 @@ import { SubscriptionCronService } from './subscription.cron';
     MailService,
     RedisService,
     SubscriptionCronService,
+    InvoiceService,
   ],
   exports: [SuperAdminService],
 })

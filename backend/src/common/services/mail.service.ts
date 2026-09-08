@@ -453,7 +453,7 @@ export class MailService {
             <td style="padding: 8px 0; border-bottom: 1px solid #dcfce7;">
               <span style="color: #6b7280; font-size: 12px; text-transform: uppercase;">Amount Paid</span><br>
               <span style="color: #1e293b; font-size: 15px; font-weight: 600;">
-                Rs. ${amount.toLocaleString('en-IN')}
+                Rs. ${Number(amount || 0).toLocaleString('en-IN')}
               </span>
             </td>
           </tr>
@@ -799,4 +799,189 @@ export class MailService {
 
     await this.sendMail(email, 'Your CRM Password Has Been Reset', content);
   }
+
+  // Invoice email -- PDF attached ke saath
+  async sendInvoiceEmail(
+    email: string,
+    name: string,
+    companyName: string,
+    invoiceNumber: string,
+    planLabel: string,
+    totalAmount: number,
+    subscriptionFrom: string,
+    subscriptionTo: string,
+    pdfBuffer: Buffer | null,
+  ): Promise<void> {
+    const content = `
+      <h2 style="color: #1e293b; margin: 0 0 8px 0; font-size: 22px;">
+        Payment Confirmed!
+      </h2>
+      <p style="color: #64748b; margin: 0 0 24px 0; font-size: 15px;">
+        Hello <strong style="color: #1e293b;">${name}</strong>,
+        your payment for <strong style="color: #1e293b;">${companyName}</strong>
+        has been confirmed and your subscription is now active.
+      </p>
+
+      <!-- Invoice Details -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 24px; margin: 0 0 24px 0;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+              <span style="color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Invoice Number</span><br>
+              <span style="color: #1e293b; font-size: 15px; font-weight: 700; font-family: monospace;">${invoiceNumber}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+              <span style="color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Plan</span><br>
+              <span style="color: #1e293b; font-size: 14px; font-weight: 600;">${planLabel}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+              <span style="color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Amount Paid</span><br>
+              <span style="color: #1e293b; font-size: 18px; font-weight: 800;">
+                ₹${Number(totalAmount || 0).toLocaleString('en-IN')}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0;">
+              <span style="color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Subscription Period</span><br>
+              <span style="color: #1e293b; font-size: 14px; font-weight: 600;">
+                ${subscriptionFrom} — ${subscriptionTo}
+              </span>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Success Banner -->
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 0 0 24px 0; text-align: center;">
+        <p style="margin: 0; color: #15803d; font-size: 14px; font-weight: 600;">
+          Your CRM subscription is now active!
+        </p>
+        <p style="margin: 6px 0 0 0; color: #16a34a; font-size: 13px;">
+          Invoice PDF is attached to this email for your records.
+        </p>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="${this.configService.get('frontend.url')}/login"
+           style="background: linear-gradient(135deg, #4f46e5, #7c3aed);
+                  color: #ffffff;
+                  padding: 14px 32px;
+                  border-radius: 8px;
+                  text-decoration: none;
+                  font-weight: 600;
+                  font-size: 15px;
+                  display: inline-block;">
+          Go to Dashboard
+        </a>
+      </div>
+    `;
+
+    const mailOptions: any = {
+      from: `"CRM System" <${this.configService.get('smtp.user')}>`,
+      to: email,
+      subject: `Invoice ${invoiceNumber} - Payment Confirmed - ${companyName}`,
+      html: this.baseTemplate(content, `Invoice ${invoiceNumber}`),
+    };
+
+    // PDF attach karo agar available hai
+    if (pdfBuffer) {
+      mailOptions.attachments = [
+        {
+          filename: `${invoiceNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ];
+    }
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+      console.log(`Invoice email sent to: ${email} | Invoice: ${invoiceNumber}`);
+    } catch (error: any) {
+      console.error(`Invoice email failed for ${email}:`, error.message);
+    }
+  }
+  // Super Admin ne force reset kiya -- user ko email bhejo
+async sendPasswordResetByAdminEmail(
+  email: string,
+  name: string,
+  tempPassword: string,
+  companyName: string,
+): Promise<void> {
+  const content = `
+    <h2 style="color: #1e293b; margin: 0 0 8px 0; font-size: 22px;">
+      Password Reset by Administrator
+    </h2>
+    <p style="color: #64748b; margin: 0 0 24px 0; font-size: 15px;">
+      Hello <strong style="color: #1e293b;">${name}</strong>,
+      your password for <strong style="color: #1e293b;">${companyName}</strong> CRM
+      has been reset by the administrator.
+    </p>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 24px; margin: 0 0 24px 0;">
+      <p style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px 0;">
+        Your Temporary Password
+      </p>
+      <p style="font-size: 24px; font-weight: 800; color: #2563eb; font-family: monospace; margin: 0; letter-spacing: 2px;">
+        ${tempPassword}
+      </p>
+    </div>
+
+    <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 16px; margin: 0 0 24px 0;">
+      <p style="margin: 0; color: #c2410c; font-size: 13px; font-weight: 600;">
+        Important: You must change this password after logging in.
+      </p>
+    </div>
+
+    <div style="text-align: center;">
+      <a href="${this.configService.get('frontend.url')}/login"
+         style="background: linear-gradient(135deg, #2563eb, #1d4ed8);
+                color: #ffffff;
+                padding: 14px 32px;
+                border-radius: 8px;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 15px;
+                display: inline-block;">
+        Login Now
+      </a>
+    </div>
+  `;
+
+  try {
+    await this.transporter.sendMail({
+      from: `"CRM System" <${this.configService.get('smtp.user')}>`,
+      to: email,
+      subject: `Password Reset - ${companyName} CRM`,
+      html: this.baseTemplate(content, 'Password Reset'),
+    });
+    console.log(`Password reset email sent to: ${email}`);
+  } catch (error: any) {
+    console.error(`Password reset email failed for ${email}:`, error.message);
+  }
+}
+async sendCustomEmail(
+  email: string,
+  name: string,
+  subject: string,
+  body: string,
+): Promise<void> {
+  try {
+    await this.transporter.sendMail({
+      from: `"CRM System" <${this.configService.get('smtp.user')}>`,
+      to: email,
+      subject,
+      html: body || this.baseTemplate(`<p>${body}</p>`, subject),
+    });
+    console.log(`Custom email sent to: ${email} | Subject: ${subject}`);
+  } catch (error: any) {
+    console.error(`Custom email failed for ${email}:`, error.message);
+    throw error;
+  }
+}
 }
