@@ -115,5 +115,21 @@ export class SettingsController {
     const data = await this.settingsService.setAutoAssign(dbPool, body.enabled);
     return { data, message: 'Auto assign setting updated' };
   }
+
+  // 6. ABOUT COMPANY
+  @Get('about-company')
+  async getAboutCompany(@CurrentDb() dbPool: Pool) {
+    const data = await this.settingsService.getAboutCompany(dbPool);
+    return { data, message: 'About company fetched successfully' };
+  }
+
+  @Patch('about-company')
+  async updateAboutCompany(
+    @CurrentDb() dbPool: Pool,
+    @Body() body: Record<string, any>,
+  ) {
+    const data = await this.settingsService.updateAboutCompany(dbPool, body);
+    return { data, message: 'Company details saved successfully' };
+  }
 }
 

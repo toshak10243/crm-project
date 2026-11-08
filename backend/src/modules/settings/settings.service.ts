@@ -46,6 +46,37 @@ export class SettingsService {
       `SELECT id, name, email, role FROM users WHERE is_active = true ORDER BY name ASC`,
     );
 
+    // 7. About Company Details
+    const aboutCompanyRes = await pool.query(
+      `SELECT value FROM settings WHERE key = 'about_company' LIMIT 1`,
+    );
+    const aboutCompany = aboutCompanyRes.rows[0]?.value || {
+      companyName: '',
+      brandName: '',
+      logoUrl: '',
+      tagline: '',
+      gstin: '',
+      pan: '',
+      cin: '',
+      msmeUdyam: '',
+      email: '',
+      supportEmail: '',
+      phone: '',
+      alternatePhone: '',
+      website: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      pincode: '',
+      country: 'India',
+      bankName: '',
+      accountHolderName: '',
+      accountNumber: '',
+      ifscCode: '',
+      upiId: '',
+    };
+
     return {
       statuses: statuses.rows,
       whatsappTemplates: waTemplates.rows,
@@ -53,6 +84,7 @@ export class SettingsService {
       leadSources: leadSources.rows,
       autoAssignLeads: autoAssign,
       managers: managers.rows,
+      aboutCompany,
     };
   }
 
@@ -201,6 +233,24 @@ export class SettingsService {
       [JSON.stringify(enabled)],
     );
     return enabled;
+  }
+
+  // --- ABOUT COMPANY ---
+  async getAboutCompany(pool: Pool) {
+    const res = await pool.query(
+      `SELECT value FROM settings WHERE key = 'about_company' LIMIT 1`,
+    );
+    return res.rows[0]?.value || null;
+  }
+
+  async updateAboutCompany(pool: Pool, data: Record<string, any>) {
+    await pool.query(
+      `INSERT INTO settings (key, value, updated_at)
+       VALUES ('about_company', $1::jsonb, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $1::jsonb, updated_at = NOW()`,
+      [JSON.stringify(data)],
+    );
+    return data;
   }
 }
 
