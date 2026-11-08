@@ -43,6 +43,26 @@ interface ManagerItem {
   role: string;
 }
 
+interface AboutCompanyInfo {
+  companyName: string;
+  brandName?: string;
+  logoUrl?: string;
+  tagline?: string;
+  gstin?: string;
+  pan?: string;
+  cin?: string;
+  email?: string;
+  supportEmail?: string;
+  phone?: string;
+  website?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+}
+
 const WorkReportPage: React.FC = () => {
   // Selected Filters
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -53,7 +73,31 @@ const WorkReportPage: React.FC = () => {
 
   const printAreaRef = useRef<HTMLDivElement>(null);
 
-  // 1. Fetch Managers List
+  // 1. Fetch Company Profile (for Real Fixed Header & Footer)
+  const { data: aboutData } = useQuery({
+    queryKey: ['settings-about-company'],
+    queryFn: async () => {
+      const res = await api.get('/settings/about-company');
+      return res.data?.data as AboutCompanyInfo;
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const company = aboutData || {
+    companyName: 'Apex Global Technologies',
+    brandName: 'Apex CRM',
+    logoUrl: '',
+    tagline: 'Enterprise Lead Management & Business Automation System',
+    gstin: '08AAAAA0000A1Z5',
+    pan: 'ABCDE1234F',
+    email: 'contact@apexglobal.com',
+    phone: '+91 98765 43210',
+    website: 'https://apexglobal.com',
+    city: 'Jaipur',
+    state: 'Rajasthan',
+  };
+
+  // 2. Fetch Managers List
   const { data: managersData } = useQuery({
     queryKey: ['work-report-managers'],
     queryFn: async () => {
@@ -63,7 +107,7 @@ const WorkReportPage: React.FC = () => {
   });
   const managers = managersData || [];
 
-  // 2. Fetch Detailed Work Report Data
+  // 3. Fetch Detailed Work Report Data
   const { data: reportData, isLoading } = useQuery({
     queryKey: ['work-report-data', selectedDate, selectedManagerId, search, page, rowsPerPage],
     queryFn: async () => {
@@ -94,15 +138,13 @@ const WorkReportPage: React.FC = () => {
     conversionRate: 0,
     callStats: { total_calls: 0, formattedTalkTime: '0m', outgoing_calls: 0, connected_calls: 0 },
   };
-  const managerInfo = reportData?.managerInfo;
 
   const selectedManagerName =
     managers.find((m) => m.id === selectedManagerId)?.name || 'All Representatives';
 
-  // Find max count for weekly trend bar chart heights
   const maxTrend = Math.max(...weeklyTrend.map((t) => t.count), 1);
 
-  // PDF Export
+  // Trigger Native Clean Vector PDF Print
   const handlePrintPdf = () => {
     window.print();
   };
@@ -110,51 +152,167 @@ const WorkReportPage: React.FC = () => {
   return (
     <CrmLayout>
       <div className="w-full min-h-screen bg-slate-50 text-slate-800 pb-20 font-sans">
-        {/* Print Stylesheet */}
+        {/* ======================================================== */}
+        {/* ENTERPRISE PDF PRINT STYLESHEET                          */}
+        {/* ======================================================== */}
         <style>{`
+          @page {
+            size: A4 portrait;
+            margin: 12mm 10mm 15mm 10mm;
+          }
+
           @media print {
             aside, header, nav, .no-print, button, select, input {
               display: none !important;
             }
-            body, main, #print-report-root {
-              background: white !important;
-              color: black !important;
+
+            html, body {
+              background: #ffffff !important;
+              color: #0f172a !important;
+              font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+              font-size: 11px !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
+            #print-report-root {
               padding: 0 !important;
               margin: 0 !important;
+              max-width: 100% !important;
             }
-            .print-only {
+
+            .pdf-header-wrapper {
               display: block !important;
+              position: static;
+              width: 100%;
+              border-bottom: 2px solid #003884;
+              padding-bottom: 10px;
+              margin-bottom: 14px;
             }
-            .shadow-2xs, .shadow-sm, .shadow-md, .shadow-lg {
+
+            .pdf-footer-wrapper {
+              display: flex !important;
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              height: 28px;
+              border-top: 1px solid #cbd5e1;
+              background: #ffffff;
+              padding-top: 6px;
+              align-items: center;
+              justify-content: space-between;
+              font-size: 9px;
+              color: #64748b;
+            }
+
+            .page-number::after {
+              content: counter(page);
+            }
+
+            table {
+              page-break-inside: auto;
+              width: 100% !important;
+            }
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            thead {
+              display: table-header-group;
+            }
+            tfoot {
+              display: table-footer-group;
+            }
+
+            .shadow-2xs, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl {
               box-shadow: none !important;
-              border: 1px solid #cbd5e1 !important;
+              border: 1px solid #e2e8f0 !important;
             }
+
+            .break-inside-avoid {
+              break-inside: avoid !important;
+              page-break-inside: avoid !important;
+            }
+
             .page-break {
               page-break-before: always;
             }
           }
-          .print-only {
+
+          .pdf-header-wrapper,
+          .pdf-footer-wrapper {
             display: none;
           }
         `}</style>
 
         <div id="print-report-root" ref={printAreaRef} className="w-full px-6 py-4 space-y-6">
-          {/* Print Only Header Banner */}
-          <div className="print-only border-b-2 border-[#003884] pb-4 mb-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-black text-[#003884] tracking-tight">CRM ENTERPRISE WORK REPORT</h1>
-                <p className="text-xs text-slate-600">Executive Performance Audit & Pipeline Intelligence</p>
+          {/* ======================================================== */}
+          {/* FIXED PRINT ONLY HEADER (LOGO + COMPANY + GST + AUDIT)   */}
+          {/* ======================================================== */}
+          <div className="pdf-header-wrapper">
+            <div className="flex items-center justify-between">
+              {/* Left: Company Logo & Brand Name */}
+              <div className="flex items-center gap-3.5">
+                {company.logoUrl ? (
+                  <img
+                    src={company.logoUrl}
+                    alt="Company Logo"
+                    className="h-12 w-12 object-contain"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-[#003884] text-white font-black text-xl flex items-center justify-center">
+                    {(company.brandName || company.companyName || 'C').charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <h1 className="text-lg font-black text-[#003884] tracking-tight leading-tight uppercase">
+                    {company.companyName || company.brandName || 'CRM ENTERPRISE'}
+                  </h1>
+                  {company.tagline && (
+                    <p className="text-[10px] text-slate-500 font-medium">{company.tagline}</p>
+                  )}
+                  <div className="flex items-center gap-3 text-[9px] text-slate-600 mt-0.5">
+                    {company.gstin && <span><strong>GSTIN:</strong> {company.gstin}</span>}
+                    {company.pan && <span><strong>PAN:</strong> {company.pan}</span>}
+                    {company.city && <span><strong>Location:</strong> {company.city}, {company.state || 'India'}</span>}
+                  </div>
+                </div>
               </div>
-              <div className="text-right text-xs text-slate-700">
-                <p><strong>Generated On:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB')}</p>
-                <p><strong>Representative:</strong> {selectedManagerName}</p>
-                {selectedDate && <p><strong>Audit Date:</strong> {selectedDate}</p>}
+
+              {/* Right: Document & Audit Credentials */}
+              <div className="text-right">
+                <div className="inline-block px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-[#003884] font-bold text-[10px] tracking-wide uppercase mb-1">
+                  OFFICIAL WORK AUDIT REPORT
+                </div>
+                <div className="text-[10px] text-slate-600 space-y-0.5">
+                  <p><strong>Generated:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p><strong>Audited Representative:</strong> {selectedManagerName}</p>
+                  <p><strong>Date Scope:</strong> {selectedDate || 'All-Time Record Set'}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Screen Top Header Bar */}
+          {/* ======================================================== */}
+          {/* FIXED PRINT ONLY FOOTER (WEBSITE, CONTACT & PAGE NUMBER)  */}
+          {/* ======================================================== */}
+          <div className="pdf-footer-wrapper">
+            <div className="flex items-center gap-4">
+              {company.website && <span>🌐 {company.website}</span>}
+              {company.email && <span>✉️ {company.email}</span>}
+              {company.phone && <span>📞 {company.phone}</span>}
+            </div>
+            <div className="font-semibold text-slate-700">
+              {company.companyName} &bull; Page <span className="page-number"></span>
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* SCREEN TOP HEADER (No-print)                             */}
+          {/* ======================================================== */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
             <div>
               <div className="flex items-center gap-2">
@@ -248,20 +406,28 @@ const WorkReportPage: React.FC = () => {
                   </span>
                   <input
                     type="text"
-                    placeholder="Search name, phone, city..."
                     value={search}
                     onChange={(e) => {
                       setSearch(e.target.value);
                       setPage(1);
                     }}
+                    placeholder="Search name, phone, city..."
                     className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 hover:bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
                   />
+                  {search && (
+                    <button
+                      onClick={() => setSearch('')}
+                      className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Reset Filters */}
+              {/* Clear All Filters */}
               {(selectedDate || selectedManagerId || search) && (
-                <div className="self-end pb-1.5">
+                <div className="self-end">
                   <button
                     onClick={() => {
                       setSelectedDate('');
@@ -269,172 +435,143 @@ const WorkReportPage: React.FC = () => {
                       setSearch('');
                       setPage(1);
                     }}
-                    className="text-xs font-semibold text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                    className="px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition cursor-pointer"
                   >
-                    Reset All Filters
+                    Reset Filters
                   </button>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Active Manager Header Profile Banner */}
-          {managerInfo && (
-            <div className="bg-gradient-to-r from-[#003884] via-[#002860] to-[#0f172a] text-white p-5 rounded-xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-5">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center text-xl font-black text-amber-300 shadow-inner">
-                  {managerInfo.name?.substring(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-extrabold text-white">{managerInfo.name}</h2>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      Active
-                    </span>
-                  </div>
-                  <p className="text-xs text-blue-200 mt-0.5">
-                    {managerInfo.email} • {managerInfo.phone || 'No phone'} • Role: <span className="capitalize">{managerInfo.role}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-6 border-t md:border-t-0 md:border-l border-white/15 pt-3 md:pt-0 md:pl-6 text-xs">
-                <div>
-                  <div className="text-blue-200 text-[11px]">Total Pipeline</div>
-                  <div className="text-xl font-black text-white mt-0.5">{totalCount}</div>
-                </div>
-                <div>
-                  <div className="text-blue-200 text-[11px]">Conversion Rate</div>
-                  <div className="text-xl font-black text-emerald-400 mt-0.5">{kpis.conversionRate}%</div>
-                </div>
-                <div>
-                  <div className="text-blue-200 text-[11px]">Calls Made</div>
-                  <div className="text-xl font-black text-amber-300 mt-0.5">{kpis.callStats.total_calls}</div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* ======================================================== */}
-          {/* GOOGLE-LEVEL EXECUTIVE 5-METRIC KPI CARDS                */}
+          {/* SECTION: 5 KPI METRICS CARDS                              */}
           {/* ======================================================== */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 break-inside-avoid">
             {/* 1. Total Leads */}
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-                <span>Total Leads</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Leads</span>
                 <span className="w-2 h-2 rounded-full bg-blue-500" />
               </div>
-              <div className="text-2xl font-black text-slate-900 mt-2">{totalCount}</div>
-              <div className="text-[11px] text-slate-400 mt-1">In selected period</div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-slate-900">{totalCount}</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5">In selected period</p>
             </div>
 
-            {/* 2. Won / Converted */}
-            <div className="bg-white p-4 rounded-xl border border-emerald-200/80 bg-emerald-50/20 shadow-2xs">
-              <div className="flex items-center justify-between text-emerald-700 text-xs font-bold">
-                <span>Deals Won</span>
+            {/* 2. Deals Won / Converted */}
+            <div className="bg-white p-4 rounded-xl border border-emerald-200 shadow-2xs bg-emerald-50/20">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Deals Won</span>
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
               </div>
-              <div className="text-2xl font-black text-emerald-700 mt-2">{kpis.converted_leads}</div>
-              <div className="text-[11px] text-emerald-600 font-semibold mt-1">
-                {kpis.conversionRate}% Win Rate
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-emerald-600">{kpis.converted_leads}</span>
               </div>
+              <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">{kpis.conversionRate}% Win Rate</p>
             </div>
 
-            {/* 3. Active Followups Pipeline */}
-            <div className="bg-white p-4 rounded-xl border border-amber-200/80 bg-amber-50/20 shadow-2xs">
-              <div className="flex items-center justify-between text-amber-800 text-xs font-bold">
-                <span>Active Pipeline</span>
+            {/* 3. Active Pipeline */}
+            <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-2xs bg-amber-50/20">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Active Pipeline</span>
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
               </div>
-              <div className="text-2xl font-black text-amber-900 mt-2">{kpis.active_leads}</div>
-              <div className="text-[11px] text-amber-700 mt-1">Under negotiation</div>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-amber-600">{kpis.active_leads}</span>
+              </div>
+              <p className="text-[10px] text-amber-600 font-medium mt-0.5">Under negotiation</p>
             </div>
 
             {/* 4. Total Talk Time */}
-            <div className="bg-white p-4 rounded-xl border border-purple-200/80 bg-purple-50/20 shadow-2xs">
-              <div className="flex items-center justify-between text-purple-800 text-xs font-bold">
-                <span>Total Talk Time</span>
+            <div className="bg-white p-4 rounded-xl border border-purple-200 shadow-2xs bg-purple-50/20">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700">Total Talk Time</span>
                 <span className="w-2 h-2 rounded-full bg-purple-500" />
               </div>
-              <div className="text-2xl font-black text-purple-900 mt-2">{kpis.callStats.formattedTalkTime}</div>
-              <div className="text-[11px] text-purple-700 mt-1">
-                {kpis.callStats.total_calls} calls logged
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-purple-600">{kpis.callStats.formattedTalkTime}</span>
               </div>
+              <p className="text-[10px] text-purple-600 font-medium mt-0.5">{kpis.callStats.total_calls} calls logged</p>
             </div>
 
-            {/* 5. Followup Alerts (Overdue / Today) */}
-            <div className="bg-white p-4 rounded-xl border border-rose-200/80 bg-rose-50/20 shadow-2xs col-span-2 sm:col-span-1">
-              <div className="flex items-center justify-between text-rose-800 text-xs font-bold">
-                <span>Follow-ups Due</span>
+            {/* 5. Follow-ups Due */}
+            <div className="bg-white p-4 rounded-xl border border-rose-200 shadow-2xs bg-rose-50/20 col-span-2 sm:col-span-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700">Follow-ups Due</span>
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
               </div>
-              <div className="text-2xl font-black text-rose-700 mt-2">{kpis.today_followups_due}</div>
-              <div className="text-[11px] text-rose-600 font-semibold mt-1">
-                {kpis.overdue_followups} overdue tasks
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-rose-600">{kpis.today_followups_due}</span>
               </div>
+              <p className="text-[10px] text-rose-600 font-medium mt-0.5">{kpis.overdue_followups} overdue tasks</p>
             </div>
           </div>
 
           {/* ======================================================== */}
-          {/* INTERACTIVE GRAPHS & VISUAL ANALYTICS ROW                */}
+          {/* SECTION: VISUAL INTELLIGENCE (LEAD VELOCITY & CHANNELS)   */}
           {/* ======================================================== */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Chart 1: 7-Day Performance Bar Chart */}
-            <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="flex items-center justify-between mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 break-inside-avoid">
+            {/* 7-Day Velocity Bar Chart */}
+            <div className="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Lead Flow Velocity (Last 7 Days)</h3>
-                  <p className="text-[11px] text-slate-500">Daily leads incoming vs active handling</p>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">Lead Flow Velocity (Last 7 Days)</h3>
+                  <p className="text-[10px] text-slate-400">Daily leads incoming vs active handling</p>
                 </div>
-                <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                  <span className="inline-block w-2.5 h-2.5 rounded bg-[#003884]" />
-                  <span>Leads Logged</span>
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-[#003884]" />
+                  Leads Logged
                 </div>
               </div>
 
-              {/* Bar Chart Visualization */}
-              <div className="h-44 flex items-end justify-between gap-3 pt-6 pb-2 px-2 border-b border-slate-100">
+              {/* Vector Bar Chart */}
+              <div className="h-40 flex items-end justify-between gap-3 pt-4 px-2">
                 {weeklyTrend.map((t, idx) => {
-                  const heightPercent = Math.max((t.count / maxTrend) * 100, 8);
+                  const pct = Math.round((t.count / maxTrend) * 100);
                   return (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                      <div className="text-[10px] font-bold text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {t.count}
+                    <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                      <span className="text-[10px] font-bold text-slate-700">{t.count}</span>
+                      <div className="w-full bg-slate-100 rounded-t h-full max-h-28 flex items-end">
+                        <div
+                          style={{ height: `${Math.max(pct, t.count > 0 ? 8 : 2)}%` }}
+                          className={`w-full rounded-t transition-all duration-300 ${
+                            t.count > 0 ? 'bg-[#003884]' : 'bg-slate-200'
+                          }`}
+                        />
                       </div>
-                      <div
-                        className="w-full max-w-[36px] bg-gradient-to-t from-[#003884] to-[#0284c7] rounded-t-md transition-all duration-300 group-hover:brightness-110 shadow-2xs"
-                        style={{ height: `${heightPercent}%` }}
-                      />
-                      <span className="text-[10px] font-medium text-slate-500 mt-1">{t.day_label}</span>
+                      <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">{t.day_label}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* Chart 2: Lead Channel Breakdown (Progress distribution) */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+            {/* Lead Sources Distribution Bars */}
+            <div className="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Top Lead Sources</h3>
-                <p className="text-[11px] text-slate-500 mb-4">Origin channel distribution</p>
+                <div className="mb-4 pb-2 border-b border-slate-100">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">Top Lead Sources</h3>
+                  <p className="text-[10px] text-slate-400">Origin channel distribution</p>
+                </div>
 
                 <div className="space-y-3">
                   {sourceBreakdown.length === 0 ? (
-                    <div className="text-center py-8 text-xs text-slate-400">No source data</div>
+                    <p className="text-xs text-slate-400 text-center py-6">No source data</p>
                   ) : (
-                    sourceBreakdown.map((src, i) => {
-                      const pct = totalCount > 0 ? Math.round((src.count / totalCount) * 100) : 0;
+                    sourceBreakdown.slice(0, 5).map((src, i) => {
+                      const sharePct = totalCount > 0 ? Math.round((src.count / totalCount) * 100) : 0;
                       return (
                         <div key={i} className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="font-semibold text-slate-800">{src.source_name}</span>
-                            <span className="text-slate-500 font-mono">{src.count} ({pct}%)</span>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-700">{src.source_name}</span>
+                            <span className="font-bold text-slate-900">{src.count} ({sharePct}%)</span>
                           </div>
-                          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                             <div
-                              className="bg-[#003884] h-full rounded-full transition-all duration-500"
-                              style={{ width: `${pct}%` }}
+                              style={{ width: `${sharePct}%` }}
+                              className="h-full bg-gradient-to-r from-blue-500 to-[#003884] rounded-full"
                             />
                           </div>
                         </div>
@@ -444,57 +581,46 @@ const WorkReportPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-                <span>Top Performing:</span>
-                <span className="font-bold text-slate-900">{sourceBreakdown[0]?.source_name || '-'}</span>
+              <div className="pt-3 border-t border-slate-100 mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+                <span>Unique Channels Tracked:</span>
+                <span className="font-bold text-slate-900">{sourceBreakdown.length}</span>
               </div>
             </div>
           </div>
 
           {/* ======================================================== */}
-          {/* SECTION 1: LEAD STATUS & COUNT TABLE (Exact Screenshot)  */}
+          {/* SECTION 1: LEAD STATUS DISTRIBUTION TABLE                */}
           {/* ======================================================== */}
-          <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Pipeline Stage Distribution</h3>
-                <p className="text-[11px] text-slate-500">Live counts grouped by lead statuses</p>
-              </div>
-              <span className="text-xs font-semibold text-slate-600">
-                Total Status Categories: <span className="text-slate-900 font-bold">{statusBreakdown.length}</span>
-              </span>
+          <div className="space-y-3 break-inside-avoid">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 tracking-tight">Status Distribution</h2>
+              <p className="text-[11px] text-slate-500">Aggregate count across sales pipeline stages</p>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="py-3 px-6">LEAD STATUS</th>
-                    <th className="py-3 px-6 text-right">COUNT</th>
+                    <th className="py-3 px-6 text-right">LEADS COUNT</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {isLoading ? (
+                  {statusBreakdown.length === 0 ? (
                     <tr>
                       <td colSpan={2} className="py-8 text-center text-slate-400 text-xs">
-                        Loading status breakdown...
-                      </td>
-                    </tr>
-                  ) : statusBreakdown.length === 0 ? (
-                    <tr>
-                      <td colSpan={2} className="py-8 text-center text-slate-400 text-sm">
                         No Data Found
                       </td>
                     </tr>
                   ) : (
                     statusBreakdown.map((item) => (
                       <tr key={item.status_id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3.5 px-6 font-semibold flex items-center gap-3">
+                        <td className="py-3.5 px-6 font-semibold text-slate-800 flex items-center gap-2.5">
                           <span
-                            className="w-3 h-3 rounded-full flex-shrink-0 shadow-2xs"
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                             style={{ backgroundColor: item.status_color || '#3b82f6' }}
                           />
-                          <span className="text-slate-900">{item.status_name}</span>
+                          <span>{item.status_name}</span>
                         </td>
                         <td className="py-3.5 px-6 text-right font-mono font-bold text-slate-900">
                           {item.count}
@@ -505,7 +631,7 @@ const WorkReportPage: React.FC = () => {
                 </tbody>
                 <tfoot>
                   <tr className="bg-slate-100/70 border-t-2 border-slate-200 text-sm font-bold text-slate-900">
-                    <td className="py-3.5 px-6">Total</td>
+                    <td className="py-3.5 px-6">Total Leads</td>
                     <td className="py-3.5 px-6 text-right font-mono text-base font-extrabold text-[#003884]">
                       {totalCount}
                     </td>
@@ -547,9 +673,9 @@ const WorkReportPage: React.FC = () => {
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="py-3 px-6">CUSTOMER / FIRST NAME</th>
-                      <th className="py-3 px-6">LEAD STATUS</th>
-                      <th className="py-3 px-6">SOURCE / CHANNEL</th>
+                      <th className="py-3 px-6">CUSTOMER / NAME</th>
+                      <th className="py-3 px-6">STATUS</th>
+                      <th className="py-3 px-6">SOURCE</th>
                       <th className="py-3 px-6">NEXT FOLLOWUP</th>
                       <th className="py-3 px-6">REMARK / ACTIVITY</th>
                     </tr>
@@ -571,7 +697,7 @@ const WorkReportPage: React.FC = () => {
                       leads.map((lead) => (
                         <tr key={lead.id} className="hover:bg-slate-50/80 transition-colors">
                           {/* Name & Phone */}
-                          <td className="py-3.5 px-6 font-semibold text-slate-900 align-top">
+                          <td className="py-3 px-6 font-semibold text-slate-900 align-top">
                             <div>{lead.first_name} {lead.last_name || ''}</div>
                             <div className="text-[11px] text-slate-400 font-normal mt-0.5">
                               {lead.phone || 'No Phone'} {lead.city ? `• ${lead.city}` : ''}
@@ -579,9 +705,9 @@ const WorkReportPage: React.FC = () => {
                           </td>
 
                           {/* Status Badge */}
-                          <td className="py-3.5 px-6 align-top">
+                          <td className="py-3 px-6 align-top">
                             <span
-                              className="inline-block px-2.5 py-0.5 rounded text-[11px] font-bold text-white shadow-2xs uppercase tracking-wide"
+                              className="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold text-white shadow-2xs uppercase tracking-wide"
                               style={{ backgroundColor: lead.status_color || '#3b82f6' }}
                             >
                               {lead.status_name || 'NEW'}
@@ -589,17 +715,17 @@ const WorkReportPage: React.FC = () => {
                           </td>
 
                           {/* Lead Source */}
-                          <td className="py-3.5 px-6 text-xs text-slate-600 align-top">
+                          <td className="py-3 px-6 text-xs text-slate-600 align-top">
                             {lead.lead_from || 'Direct'}
                           </td>
 
                           {/* Next Followup Date */}
-                          <td className="py-3.5 px-6 text-xs text-slate-600 align-top whitespace-nowrap">
+                          <td className="py-3 px-6 text-xs text-slate-600 align-top whitespace-nowrap">
                             {lead.next_followup_date || '-'}
                           </td>
 
                           {/* Remark */}
-                          <td className="py-3.5 px-6 text-xs text-slate-600 align-top whitespace-pre-line leading-relaxed max-w-sm">
+                          <td className="py-3 px-6 text-xs text-slate-600 align-top whitespace-pre-line leading-relaxed max-w-sm">
                             {lead.remark ? (
                               <div className="p-2 bg-slate-50 border border-slate-200 rounded text-slate-700 text-[11px]">
                                 {lead.remark}
