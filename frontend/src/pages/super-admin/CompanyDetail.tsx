@@ -757,10 +757,10 @@ const SuperAdminCompanyDetail = () => {
                       return days <= 7 ? 'bg-green-100' : days <= 30 ? 'bg-amber-100' : 'bg-red-100';
                     })()
                   }`}>
-                    {!usageData.lastActivity ? '🔴' :
+                    {!usageData.lastActivity ? '' :
                       (() => {
                         const days = Math.floor((Date.now() - new Date(usageData.lastActivity).getTime()) / (1000 * 60 * 60 * 24));
-                        return days <= 7 ? '🟢' : days <= 30 ? '🟡' : '🔴';
+                        return days <= 7 ? '' : days <= 30 ? '' : '';
                       })()
                     }
                   </div>

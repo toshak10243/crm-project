@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -112,6 +113,17 @@ export class UsersController {
     return {
       data: result,
       message: 'User activated successfully',
+    };
+  }
+
+  // DELETE /api/users/:id
+  @Delete(':id')
+  @Roles('admin')
+  async deleteUser(@CurrentUser() user: any, @Param('id') id: string) {
+    const result = await this.usersService.deleteUser(user.dbName, id);
+    return {
+      data: result,
+      message: 'User deleted successfully',
     };
   }
 

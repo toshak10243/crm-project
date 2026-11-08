@@ -255,6 +255,18 @@ export class UsersService {
         paramCount++;
       }
 
+      if (dto.branchId !== undefined) {
+        updates.push(`branch_id = ${paramCount}`);
+        params.push(dto.branchId || null);
+        paramCount++;
+      }
+
+      if (dto.password) {
+        const newHash = await bcrypt.hash(dto.password, 10);
+        updates.push(`password_hash = ${paramCount}`);
+        params.push(newHash);
+        paramCount++;
+      }
       if (dto.departmentId !== undefined) {
         updates.push(`department_id = $${paramCount}`);
         params.push(dto.departmentId);
@@ -282,6 +294,21 @@ export class UsersService {
       );
 
       return result.rows[0];
+    } finally {
+      await pool.end();
+    }
+  }
+
+  
+  // User delete karo
+  async deleteUser(dbName: string, userId: string) {
+    const pool = this.createPool(dbName);
+    try {
+      const res = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id, name, email', [userId]);
+      if (res.rows.length === 0) {
+        throw new NotFoundException('User not found');
+      }
+      return res.rows[0];
     } finally {
       await pool.end();
     }

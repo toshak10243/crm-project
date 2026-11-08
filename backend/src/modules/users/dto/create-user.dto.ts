@@ -3,8 +3,6 @@ import {
   IsString,
   IsOptional,
   IsIn,
-  MinLength,
-  Matches,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -22,12 +20,21 @@ export class CreateUserDto {
   @IsString()
   username?: string;
 
-  @IsIn(['admin', 'manager', 'agent'], {
-    message: 'Role must be admin, manager or agent',
+  @IsOptional()
+  @IsIn(['admin', 'manager', 'agent', 'sales_executive', 'extra_admin'], {
+    message: 'Role must be admin, manager, agent, sales_executive or extra_admin',
   })
-  role!: string;
+  role?: string;
 
   @IsOptional()
   @IsString()
   departmentId?: string;
+
+  @IsOptional()
+  @IsString()
+  branchId?: string;
+
+  @IsOptional()
+  @IsString()
+  password?: string;
 }

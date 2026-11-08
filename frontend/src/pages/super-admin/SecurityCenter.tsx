@@ -7,8 +7,7 @@ import SuperAdminLayout from '../../components/layout/SuperAdminLayout';
 import {
   Shield, Monitor, Clock, AlertTriangle,
   LogOut, CheckCircle2, XCircle, RefreshCw,
-  Smartphone, Globe, Key, ChevronRight,
-} from 'lucide-react';
+  Smartphone, Globe, Key, } from 'lucide-react';
 
 const SuperAdminSecurityCenter = () => {
   const navigate = useNavigate();

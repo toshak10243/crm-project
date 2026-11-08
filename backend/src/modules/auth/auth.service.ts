@@ -14,6 +14,7 @@ import { DbManagerService } from '../../database/db-manager.service';
 import { MailService } from '../../common/services/mail.service';
 import { RedisService } from '../../common/services/redis.service';
 import { LoginDto } from './dto/login.dto';
+import { UnifiedLoginDto } from './dto/unified-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
@@ -701,4 +702,127 @@ export class AuthService {
 
     return { accessToken, refreshToken };
   }
+
+  // Single Unified Login -- Super Admin, Master Admin, Sales Agents
+  async unifiedLogin(dto: UnifiedLoginDto, ipAddress: string, userAgent: string) {
+    const masterPool = this.dbManager.getMasterPool();
+
+    // 1. First check if it is Super Admin (crm_master DB)
+    const superAdminRes = await masterPool.query(
+      `SELECT * FROM super_admins 
+       WHERE (email = $1 OR phone = $1 OR username = $1) 
+       AND is_active = true`,
+      [dto.identifier],
+    );
+
+    if (superAdminRes.rows.length > 0) {
+      const superAdmin = superAdminRes.rows[0];
+      const isSuperMatch = await bcrypt.compare(dto.password, superAdmin.password_hash);
+      if (isSuperMatch) {
+        const accessSecret = this.configService.get<string>('jwt.accessSecret');
+        const refreshSecret = this.configService.get<string>('jwt.refreshSecret');
+
+        const accessToken = jwt.sign(
+          { sub: superAdmin.id, email: superAdmin.email, type: 'super_admin' },
+          accessSecret,
+          { expiresIn: '15m' },
+        );
+        const refreshToken = jwt.sign(
+          { sub: superAdmin.id, email: superAdmin.email, type: 'super_admin_refresh' },
+          refreshSecret,
+          { expiresIn: '30d' },
+        );
+
+        const tokenHash = crypto
+          .createHash('sha256')
+          .update(refreshToken)
+          .digest('hex');
+
+        await masterPool.query(
+          `INSERT INTO super_admin_tokens (super_admin_id, token_hash, expires_at)
+           VALUES ($1, $2, NOW() + INTERVAL '30 days')`,
+          [superAdmin.id, tokenHash],
+        );
+
+        return {
+          user: {
+            id: superAdmin.id,
+            name: superAdmin.name,
+            email: superAdmin.email,
+            phone: superAdmin.phone,
+            username: superAdmin.username,
+            role: 'super_admin',
+          },
+          accessToken,
+          refreshToken,
+          isSuperAdmin: true,
+        };
+      }
+    }
+
+    // 2. Tenant DB search
+    let targetCompanies = [];
+    if (dto.slug) {
+      const compRes = await masterPool.query(
+        `SELECT id, name, slug, db_name, is_active FROM companies WHERE slug = $1 AND is_active = true`,
+        [dto.slug],
+      );
+      targetCompanies = compRes.rows;
+    } else {
+      const compRes = await masterPool.query(
+        `SELECT id, name, slug, db_name, is_active FROM companies WHERE is_active = true`,
+      );
+      targetCompanies = compRes.rows;
+    }
+
+    if (targetCompanies.length === 0) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    for (const company of targetCompanies) {
+      const clientPool = this.createClientPool(company.db_name);
+      try {
+        const user = await this.findUserByIdentifier(clientPool, dto.identifier);
+        if (user) {
+          const isPasswordValid = await bcrypt.compare(dto.password, user.password_hash);
+          if (isPasswordValid) {
+            await clientPool.query(
+              `UPDATE users SET last_login_at = NOW() WHERE id = $1`,
+              [user.id],
+            );
+
+            const tokens = await this.generateTokens(
+              user.id,
+              user.role,
+              company.db_name,
+              company.slug,
+              clientPool,
+            );
+
+            return {
+              user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                username: user.username,
+                role: user.role,
+                companySlug: company.slug,
+                companyName: company.name,
+              },
+              ...tokens,
+              isSuperAdmin: false,
+            };
+          }
+        }
+      } catch (e) {
+        // Continue
+      } finally {
+        await clientPool.end();
+      }
+    }
+
+    throw new UnauthorizedException('Invalid credentials');
+  }
+
 }

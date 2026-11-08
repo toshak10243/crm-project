@@ -24,12 +24,20 @@ export class UpdateUserDto {
   username?: string;
 
   @IsOptional()
-  @IsIn(['admin', 'manager', 'agent'])
+  @IsIn(['admin', 'manager', 'agent', 'sales_executive', 'extra_admin'])
   role?: string;
 
   @IsOptional()
   @IsString()
   departmentId?: string;
+
+  @IsOptional()
+  @IsString()
+  branchId?: string;
+
+  @IsOptional()
+  @IsString()
+  password?: string;
 
   @IsOptional()
   @IsBoolean()

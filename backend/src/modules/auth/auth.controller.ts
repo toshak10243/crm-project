@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { UnifiedLoginDto } from './dto/unified-login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtGuard } from '../../common/guards/jwt.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -17,6 +18,20 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  // POST /api/auth/unified-login
+  // Single login for Super Admin, Master Admin, and Sales Agents
+  @Post('unified-login')
+  @HttpCode(HttpStatus.OK)
+  async unifiedLogin(@Body() dto: UnifiedLoginDto, @Req() req: any) {
+    const ipAddress = req.ip || req.connection.remoteAddress || '';
+    const userAgent = req.headers['user-agent'] || '';
+    const result = await this.authService.unifiedLogin(dto, ipAddress, userAgent);
+    return {
+      data: result,
+      message: 'Login successful',
+    };
+  }
 
   // POST /api/auth/login
   // Email, phone, ya username se login
@@ -85,7 +100,6 @@ export class AuthController {
   }
 
   // POST /api/auth/forgot-password
-  // Email, phone, ya username daalo -- OTP aayega
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   async forgotPassword(
@@ -103,14 +117,12 @@ export class AuthController {
   }
 
   // POST /api/auth/resend-otp
-  // 60 seconds ke baad resend allow hoga
   @Post('resend-otp')
   @HttpCode(HttpStatus.OK)
   async resendOtp(
     @Body('userId') userId: string,
     @Body('slug') slug: string,
   ) {
-    // Slug se dbName nikalo
     const masterPool = (this.authService as any).dbManager.getMasterPool();
     const companyResult = await masterPool.query(
       `SELECT db_name FROM companies WHERE slug = $1`,
@@ -135,7 +147,6 @@ export class AuthController {
   }
 
   // POST /api/auth/reset-password
-  // OTP verify karke naya password set karo
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   async resetPassword(

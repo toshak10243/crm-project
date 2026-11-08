@@ -5,7 +5,7 @@ import { useAuthStore } from '../../store/auth.store';
 import api from '../../lib/api';
 import { Eye, EyeOff, Shield } from 'lucide-react';
 
-const SuperAdminLogin = () => {
+const Login = () => {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
   const [form, setForm] = useState({ identifier: '', password: '' });
@@ -14,17 +14,24 @@ const SuperAdminLogin = () => {
 
   const loginMutation = useMutation({
     mutationFn: async (data: typeof form) => {
-      const res = await api.post('/super-admin/auth/login', data);
+      // Unified login endpoint that works for Super Admin, Master Admin, and Sales Agents
+      const res = await api.post('/auth/unified-login', data);
       return res.data;
     },
     onSuccess: (data) => {
+      const isSuperAdmin = data.data.isSuperAdmin || data.data.user?.role === 'super_admin';
       setAuth({
         user: data.data.user,
         accessToken: data.data.accessToken,
         refreshToken: data.data.refreshToken,
-        isSuperAdmin: true,
+        isSuperAdmin,
       });
-      navigate('/super-admin/dashboard');
+
+      if (isSuperAdmin) {
+        navigate('/super-admin/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     },
     onError: (err: any) => {
       setError(err.response?.data?.message || 'Invalid credentials');
@@ -43,11 +50,11 @@ const SuperAdminLogin = () => {
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] flex">
-
       {/* Left Panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#0f172a] flex-col items-center justify-center p-12 relative overflow-hidden">
         {/* Subtle grid pattern */}
-        <div className="absolute inset-0 opacity-[0.03]"
+        <div
+          className="absolute inset-0 opacity-[0.03]"
           style={{
             backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
             backgroundSize: '32px 32px',
@@ -61,14 +68,14 @@ const SuperAdminLogin = () => {
             CRM System
           </h1>
           <p className="text-slate-400 text-base leading-relaxed">
-            Super Admin Control Panel. Manage companies, subscriptions, and platform settings.
+            Enterprise Lead & Customer Management. Manage pipelines, sales follow-ups, and teams.
           </p>
           <div className="mt-12 grid grid-cols-2 gap-4 text-left">
             {[
-              { label: 'Companies', value: 'Manage All' },
-              { label: 'Subscriptions', value: 'Full Control' },
-              { label: 'Payments', value: 'Verify & Track' },
-              { label: 'Platform', value: 'Admin Only' },
+              { label: 'Leads', value: 'Pipeline & Scoring' },
+              { label: 'Follow-ups', value: 'Today & Automated' },
+              { label: 'Communications', value: 'IVR & WA Daddy' },
+              { label: 'Platform', value: 'Enterprise Multi-Tenant' },
             ].map((item) => (
               <div key={item.label} className="bg-white/5 border border-white/10 rounded-xl p-4">
                 <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">{item.label}</p>
@@ -82,7 +89,6 @@ const SuperAdminLogin = () => {
       {/* Right Panel */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-3">
@@ -95,13 +101,13 @@ const SuperAdminLogin = () => {
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
             <div className="mb-8">
               <p className="text-xs font-semibold text-blue-600 uppercase tracking-widest mb-2">
-                ADMIN ACCESS
+                SECURE ACCESS
               </p>
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
                 Sign in to continue
               </h2>
               <p className="text-slate-500 text-sm mt-1">
-                Enter your credentials to access the admin panel
+                Enter your credentials to access the CRM portal
               </p>
             </div>
 
@@ -116,7 +122,6 @@ const SuperAdminLogin = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-
               {/* Identifier */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
@@ -139,7 +144,7 @@ const SuperAdminLogin = () => {
                   </label>
                   <button
                     type="button"
-                    onClick={() => navigate('/super-admin/forgot-password')}
+                    onClick={() => navigate('/forgot-password')}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
                   >
                     Forgot password?
@@ -190,4 +195,4 @@ const SuperAdminLogin = () => {
   );
 };
 
-export default SuperAdminLogin;
+export default Login;

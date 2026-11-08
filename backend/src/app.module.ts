@@ -2,11 +2,17 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import envConfig from './config/env.config';
-import { DbManagerService } from './database/db-manager.service';
-import { TenantPoolService } from './database/tenant-pool.service';
+import { DatabaseModule } from './database/database.module';
 import { SuperAdminModule } from './modules/super-admin/super-admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { LeadsModule } from './modules/leads/leads.module';
+import { IvrModule } from './modules/ivr/ivr.module';
+import { BranchesModule } from './modules/branches/branches.module';
+import { FormFieldsModule } from './modules/form-fields/form-fields.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { WorkReportModule } from './modules/work-report/work-report.module';
+import { WaDaddyModule } from './modules/wadaddy/wadaddy.module';
 
 @Module({
   imports: [
@@ -15,11 +21,17 @@ import { UsersModule } from './modules/users/users.module';
       load: [envConfig],
     }),
     ScheduleModule.forRoot(),
+    DatabaseModule,
     SuperAdminModule,
     AuthModule,
     UsersModule,
+    LeadsModule,
+    IvrModule,
+    BranchesModule,
+    FormFieldsModule,
+    SettingsModule,
+    WorkReportModule,
+    WaDaddyModule,
   ],
-  providers: [DbManagerService, TenantPoolService],
-  exports: [DbManagerService, TenantPoolService],
 })
 export class AppModule {}
