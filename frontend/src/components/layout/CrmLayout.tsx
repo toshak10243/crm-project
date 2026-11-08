@@ -118,30 +118,22 @@ export const CrmLayout: React.FC<{
       {/* Sidebar - Fixed Left */}
       <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-slate-200 select-none shadow-sm">
         {/* Brand / Logo Header */}
-        <div className="h-16 flex items-center px-5 border-b border-slate-100 gap-3 overflow-hidden">
+        <div className="h-20 flex items-center px-5 border-b border-slate-100 gap-3.5 overflow-hidden">
           {companyLogo ? (
             <img
               src={companyLogo}
               alt="Logo"
-              className="h-10 max-w-[50px] object-contain flex-shrink-0"
+              className="h-12 w-12 max-w-[54px] object-contain flex-shrink-0"
             />
-          ) : null}
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#003884] font-black text-lg flex-shrink-0">
+              {companyTitle ? companyTitle.charAt(0).toUpperCase() : 'C'}
+            </div>
+          )}
           <div className="flex flex-col min-w-0">
-            {companyTitle ? (
-              <>
-                <span className="text-base font-bold tracking-tight text-[#003884] truncate leading-tight">
-                  {companyTitle}
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">CRM</span>
-              </>
-            ) : (
-              <>
-                <span className="text-sm font-bold tracking-tight text-[#003884] leading-tight">
-                  Lead Management
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">CRM</span>
-              </>
-            )}
+            <span className="text-lg font-extrabold tracking-tight text-[#003884] truncate leading-tight">
+              {companyTitle || 'Lead Management'}
+            </span>
           </div>
         </div>
 
@@ -186,51 +178,66 @@ export const CrmLayout: React.FC<{
               </svg>
             </button>
             {openDropdowns['CRM'] && (
-              <div className="pl-9 pr-2 py-1 space-y-1 text-xs">
+              <div className="pl-6 pr-2 py-1 space-y-1 text-xs">
                 <NavLink
                   to="/crm/add-lead"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  Add Lead
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Add Lead</span>
                 </NavLink>
                 <NavLink
                   to="/crm/all-leads"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  All Lead
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  <span>All Lead</span>
                 </NavLink>
                 <NavLink
                   to="/crm/today-followup"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  Today Followup
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Today Followup</span>
                 </NavLink>
                 <NavLink
                   to="/crm/all-followup"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  All Followup
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>All Followup</span>
                 </NavLink>
                 <NavLink
                   to="/crm/today-birthday"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  Today Birthday
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                  </svg>
+                  <span>Today Birthday</span>
                 </NavLink>
               </div>
             )}
@@ -259,24 +266,30 @@ export const CrmLayout: React.FC<{
               </svg>
             </button>
             {openDropdowns['IVR'] && (
-              <div className="pl-9 pr-2 py-1 space-y-1 text-xs">
+              <div className="pl-6 pr-2 py-1 space-y-1 text-xs">
                 <NavLink
                   to="/ivr/incoming"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  Incoming Call
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                  <span>Incoming Call</span>
                 </NavLink>
                 <NavLink
                   to="/ivr/outgoing"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  Outgoing Call
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                  </svg>
+                  <span>Outgoing Call</span>
                 </NavLink>
               </div>
             )}
@@ -306,33 +319,42 @@ export const CrmLayout: React.FC<{
                 </svg>
               </button>
               {openDropdowns['Master'] && (
-                <div className="pl-9 pr-2 py-1 space-y-1 text-xs">
+                <div className="pl-6 pr-2 py-1 space-y-1 text-xs">
                   <NavLink
                     to="/master/branch"
                     className={({ isActive }) =>
-                      `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                      `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                       }`
                     }
                   >
-                    Branch
+                    <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <span>Branch</span>
                   </NavLink>
                   <NavLink
                     to="/master/form-fields"
                     className={({ isActive }) =>
-                      `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                      `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                       }`
                     }
                   >
-                    Form Fields
+                    <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Form Fields</span>
                   </NavLink>
                   <NavLink
                     to="/change-password"
                     className={({ isActive }) =>
-                      `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                      `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                       }`
                     }
                   >
-                    Change Password
+                    <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span>Change Password</span>
                   </NavLink>
                 </div>
               )}
@@ -363,26 +385,32 @@ export const CrmLayout: React.FC<{
                 </svg>
               </button>
               {openDropdowns['Admin User'] && (
-                <div className="pl-9 pr-2 py-1 space-y-1 text-xs">
+                <div className="pl-6 pr-2 py-1 space-y-1 text-xs">
                   <NavLink
                     to="/admin-users"
                     end
                     className={({ isActive }) =>
-                      `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                      `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                       }`
                     }
                   >
-                    Admin User
+                    <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>Admin User</span>
                   </NavLink>
                   <NavLink
                     to="/admin-users/master"
                     end
                     className={({ isActive }) =>
-                      `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                      `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                       }`
                     }
                   >
-                    Master
+                    <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <span>Master</span>
                   </NavLink>
                 </div>
               )}
@@ -431,42 +459,54 @@ export const CrmLayout: React.FC<{
               </svg>
             </button>
             {openDropdowns['WA Daddy'] && (
-              <div className="pl-9 pr-2 py-1 space-y-1 text-xs">
+              <div className="pl-6 pr-2 py-1 space-y-1 text-xs">
                 <NavLink
                   to="/wa-daddy/contacts"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  Contacts
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <span>Contacts</span>
                 </NavLink>
                 <NavLink
                   to="/wa-daddy/campaigns"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  Campaigns
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                  </svg>
+                  <span>Campaigns</span>
                 </NavLink>
                 <NavLink
                   to="/wa-daddy/templates"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  Templates
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                  </svg>
+                  <span>Templates</span>
                 </NavLink>
                 <NavLink
                   to="/wa-daddy/chat"
                   className={({ isActive }) =>
-                    `block px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
+                    `flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors ${isActive ? 'text-blue-600 bg-blue-50 font-semibold' : 'text-slate-500 hover:text-slate-900'
                     }`
                   }
                 >
-                  Chat
+                  <svg className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <span>Chat</span>
                 </NavLink>
               </div>
             )}
