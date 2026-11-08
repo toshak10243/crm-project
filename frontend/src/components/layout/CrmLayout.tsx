@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth.store';
+import api from '../../lib/api';
 
 export const CrmLayout: React.FC<{
   children: React.ReactNode;
@@ -9,6 +11,19 @@ export const CrmLayout: React.FC<{
   const location = useLocation();
   const { user, logout } = useAuthStore();
 
+  // Fetch Company About info (for Sidebar logo & dynamic company name)
+  const { data: aboutData } = useQuery({
+    queryKey: ['settings-about-company'],
+    queryFn: async () => {
+      const res = await api.get('/settings/about-company');
+      return res.data?.data;
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const companyLogo = aboutData?.logoUrl || '';
+  const companyTitle = aboutData?.brandName || aboutData?.companyName || '';
+
   const [openDropdowns, setOpenDropdowns] = useState<Record<string, boolean>>({
     CRM: true,
     IVR: false,
@@ -16,6 +31,19 @@ export const CrmLayout: React.FC<{
     'Admin User': false,
     'WA Daddy': false,
   });
+
+  // Automatically keep submenus open based on active route
+  useEffect(() => {
+    const p = location.pathname.toLowerCase();
+    setOpenDropdowns((prev) => ({
+      ...prev,
+      CRM: p.includes('/crm/') || prev.CRM,
+      IVR: p.includes('/ivr/') || prev.IVR,
+      Master: p.includes('/master/') || p.includes('/change-password') || prev.Master,
+      'Admin User': p.includes('/admin-user') || prev['Admin User'],
+      'WA Daddy': p.includes('/wa-daddy/') || prev['WA Daddy'],
+    }));
+  }, [location.pathname]);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -90,10 +118,30 @@ export const CrmLayout: React.FC<{
       {/* Sidebar - Fixed Left */}
       <aside className="w-64 flex-shrink-0 flex flex-col bg-white border-r border-slate-200 select-none shadow-sm">
         {/* Brand / Logo Header */}
-        <div className="h-16 flex items-center px-6 border-b border-slate-100">
-          <div className="flex flex-col">
-            <span className="text-2xl font-black tracking-tight text-[#003884]">Lead Management</span>
-            <span className="text-[10px] text-slate-400 font-medium -mt-1">CRM</span>
+        <div className="h-16 flex items-center px-5 border-b border-slate-100 gap-3 overflow-hidden">
+          {companyLogo ? (
+            <img
+              src={companyLogo}
+              alt="Logo"
+              className="h-10 max-w-[50px] object-contain flex-shrink-0"
+            />
+          ) : null}
+          <div className="flex flex-col min-w-0">
+            {companyTitle ? (
+              <>
+                <span className="text-base font-bold tracking-tight text-[#003884] truncate leading-tight">
+                  {companyTitle}
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">CRM</span>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-bold tracking-tight text-[#003884] leading-tight">
+                  Lead Management
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">CRM</span>
+              </>
+            )}
           </div>
         </div>
 

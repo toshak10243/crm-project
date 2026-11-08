@@ -158,6 +158,7 @@ const SettingsPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings-all'] });
+      queryClient.invalidateQueries({ queryKey: ['settings-about-company'] });
       showAlert('Company details updated successfully');
     },
     onError: (err: any) => {
@@ -165,12 +166,12 @@ const SettingsPage: React.FC = () => {
     },
   });
 
-  // Handle Logo Upload (Base64 data URL)
+  // Handle Logo Upload (Base64 data URL up to 5MB)
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        showAlert('Logo file size must be less than 2MB', 'error');
+      if (file.size > 5 * 1024 * 1024) {
+        showAlert('Logo file size must be less than 5MB', 'error');
         return;
       }
       const reader = new FileReader();
@@ -443,7 +444,7 @@ const SettingsPage: React.FC = () => {
                             </svg>
                           </div>
                           <span className="text-xs font-medium text-slate-700">Company Logo</span>
-                          <span className="text-[11px] text-slate-400">PNG, JPG (Max 2MB)</span>
+                          <span className="text-[11px] text-slate-400">PNG, JPG (Max 5MB)</span>
                           <label className="mt-2.5 px-3 py-1 rounded bg-[#003884] text-white text-xs font-medium hover:bg-blue-900 cursor-pointer transition-colors">
                             Browse
                             <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
