@@ -33,6 +33,27 @@ export class LeadsController {
     };
   }
 
+  // GET /api/leads/dashboard-metrics - Real-time metrics for Dashboard
+  @Get('dashboard-metrics')
+  async getDashboardMetrics(
+    @CurrentDb() dbPool: Pool,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('managerId') managerId?: string,
+    @Query('statusId') statusId?: string,
+  ) {
+    const data = await this.leadsService.getDashboardMetrics(dbPool, {
+      startDate,
+      endDate,
+      managerId,
+      statusId,
+    });
+    return {
+      data,
+      message: 'Dashboard metrics fetched successfully',
+    };
+  }
+
   // GET /api/leads - Query paginated leads with all filters
   @Get()
   async getLeads(@CurrentDb() dbPool: Pool, @Query() query: any) {

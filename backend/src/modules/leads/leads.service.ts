@@ -681,4 +681,194 @@ export class LeadsService {
       client.release();
     }
   }
+
+  // GET /api/leads/dashboard-metrics - Real-time Database Dashboard Metrics & Charts
+  async getDashboardMetrics(pool: Pool, filters?: { startDate?: string; endDate?: string; managerId?: string; statusId?: string }) {
+    // Build conditional where clause for date, manager, and status filters
+    let whereClauses = ['1=1'];
+    const params: any[] = [];
+    let pIdx = 1;
+
+    if (filters?.startDate) {
+      whereClauses.push(`l.created_at >= $${pIdx++}`);
+      params.push(`${filters.startDate} 00:00:00`);
+    }
+    if (filters?.endDate) {
+      whereClauses.push(`l.created_at <= $${pIdx++}`);
+      params.push(`${filters.endDate} 23:59:59`);
+    }
+    if (filters?.managerId) {
+      whereClauses.push(`l.assigned_to = $${pIdx++}`);
+      params.push(filters.managerId);
+    }
+    if (filters?.statusId) {
+      whereClauses.push(`l.status_id = $${pIdx++}`);
+      params.push(filters.statusId);
+    }
+
+    const whereSql = whereClauses.join(' AND ');
+
+    // 1. Total Leads matching filter
+    const totalLeadsRes = await pool.query(
+      `SELECT count(*) FROM leads l WHERE ${whereSql}`,
+      params,
+    );
+    const totalLeads = parseInt(totalLeadsRes.rows[0]?.count || '0', 10);
+
+    // 2. Today Followups
+    const todayFollowupsRes = await pool.query(
+      `SELECT count(*) FROM leads l WHERE DATE(l.next_followup_date) = CURRENT_DATE`,
+    );
+    const todayFollowup = parseInt(todayFollowupsRes.rows[0]?.count || '0', 10);
+
+    // 3. All Followups (pending future or overdue)
+    const allFollowupsRes = await pool.query(
+      `SELECT count(*) FROM leads l WHERE l.next_followup_date IS NOT NULL`,
+    );
+    const allFollowup = parseInt(allFollowupsRes.rows[0]?.count || '0', 10);
+
+    // 4. Today Birthdays
+    const todayBirthdaysRes = await pool.query(
+      `SELECT count(*) FROM leads l 
+       WHERE l.date_of_birth IS NOT NULL 
+         AND EXTRACT(MONTH FROM l.date_of_birth) = EXTRACT(MONTH FROM CURRENT_DATE) 
+         AND EXTRACT(DAY FROM l.date_of_birth) = EXTRACT(DAY FROM CURRENT_DATE)`,
+    );
+    const todayBirthday = parseInt(todayBirthdaysRes.rows[0]?.count || '0', 10);
+
+    // 4b. Total Active Branches
+    const branchesRes = await pool.query(`SELECT count(*) FROM branches WHERE is_active = true`);
+    const totalBranches = parseInt(branchesRes.rows[0]?.count || '0', 10);
+
+    // 4c. Total Counselors / Agents
+    const counselorsRes = await pool.query(`SELECT count(*) FROM users WHERE is_active = true`);
+    const totalCounselors = parseInt(counselorsRes.rows[0]?.count || '0', 10);
+
+    // 5. Total IVR Calls & durations
+    const callsRes = await pool.query(`
+      SELECT 
+        COUNT(*) AS total_calls,
+        COUNT(*) FILTER (WHERE call_type = 'incoming') AS incoming_calls,
+        COUNT(*) FILTER (WHERE call_type = 'outgoing') AS outgoing_calls,
+        COALESCE(SUM(NULLIF(regexp_replace(call_duration, '[^0-9]', '', 'g'), '')::int), 0) AS total_duration_seconds
+      FROM ivr_calls
+    `);
+    const callStats = callsRes.rows[0];
+
+    // 6. Lead Flow Trend (Last 7 Days dynamic aggregation)
+    const trendRes = await pool.query(`
+      WITH date_series AS (
+        SELECT generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day')::date AS day
+      )
+      SELECT 
+        TO_CHAR(ds.day, 'DD/MM') AS date,
+        COUNT(l.id) AS leads
+      FROM date_series ds
+      LEFT JOIN leads l ON DATE(l.created_at) = ds.day
+      GROUP BY ds.day
+      ORDER BY ds.day ASC
+    `);
+
+    // 7. Lead Sources Distribution (From DB)
+    const sourcesRes = await pool.query(`
+      SELECT 
+        COALESCE(NULLIF(l.lead_from, ''), 'Direct') AS name,
+        COUNT(l.id) AS value
+      FROM leads l
+      WHERE ${whereSql}
+      GROUP BY name
+      ORDER BY value DESC
+      LIMIT 6
+    `, params);
+
+    const sourcePalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+    const leadSources = sourcesRes.rows.map((r, i) => ({
+      name: r.name,
+      value: parseInt(r.value, 10),
+      color: sourcePalette[i % sourcePalette.length],
+    }));
+
+    // 8. Conversion Pipeline Funnel (Dynamic by Lead Statuses)
+    const funnelRes = await pool.query(`
+      SELECT 
+        COALESCE(ls.name, 'Unassigned') AS stage,
+        COALESCE(ls.color, '#64748b') AS color,
+        COUNT(l.id) AS count
+      FROM leads l
+      LEFT JOIN lead_statuses ls ON ls.id = l.status_id
+      WHERE ${whereSql}
+      GROUP BY stage, color, ls.sort_order
+      ORDER BY COALESCE(ls.sort_order, 99) ASC, count DESC
+    `, params);
+
+    const funnel = funnelRes.rows.map((r) => ({
+      stage: r.stage,
+      count: parseInt(r.count, 10),
+      color: r.color,
+    }));
+
+    // 9. Recent Leads list (for quick table view / audit)
+    const recentLeadsRes = await pool.query(`
+      SELECT 
+        l.id,
+        l.lead_number,
+        l.name,
+        l.phone,
+        l.email,
+        l.city,
+        l.lead_from,
+        l.created_at,
+        ls.name AS status_name,
+        ls.color AS status_color,
+        u.name AS counselor_name
+      FROM leads l
+      LEFT JOIN lead_statuses ls ON ls.id = l.status_id
+      LEFT JOIN users u ON u.id = l.assigned_to
+      ORDER BY l.created_at DESC
+      LIMIT 6
+    `);
+
+    // 10. Top Sales Team Performers based on leads handled & IVR talktime
+    const performersRes = await pool.query(`
+      SELECT 
+        u.id,
+        u.name,
+        u.role,
+        COUNT(DISTINCT l.id) AS leads_handled,
+        COUNT(DISTINCT c.id) AS calls_count
+      FROM users u
+      LEFT JOIN leads l ON l.assigned_to = u.id
+      LEFT JOIN ivr_calls c ON c.agent_id = u.id
+      WHERE u.is_active = true
+      GROUP BY u.id, u.name, u.role
+      ORDER BY leads_handled DESC, calls_count DESC
+      LIMIT 5
+    `);
+
+    return {
+      metrics: {
+        totalLeads,
+        todayFollowup,
+        allFollowup,
+        todayBirthday,
+        totalBranches,
+        totalCounselors,
+        totalCalls: parseInt(callStats?.total_calls || '0', 10),
+        incomingCalls: parseInt(callStats?.incoming_calls || '0', 10),
+        outgoingCalls: parseInt(callStats?.outgoing_calls || '0', 10),
+        totalDurationSeconds: parseInt(callStats?.total_duration_seconds || '0', 10),
+      },
+      chartData: trendRes.rows.map(r => ({ date: r.date, leads: parseInt(r.leads, 10) })),
+      leadSourceData: leadSources.length > 0 ? leadSources : [{ name: 'Direct', value: 0, color: '#3b82f6' }],
+      funnelData: funnel,
+      recentLeads: recentLeadsRes.rows,
+      performers: performersRes.rows.map(p => ({
+        id: p.id,
+        name: p.name,
+        role: p.role,
+        leads: parseInt(p.leads_handled, 10),
+        calls: parseInt(p.calls_count, 10),
+      })),
+    };
+  }
 }
