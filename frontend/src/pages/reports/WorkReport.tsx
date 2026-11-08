@@ -133,13 +133,7 @@ const WorkReportPage: React.FC = () => {
         <style>{`
           @page {
             size: A4 portrait;
-            margin: 12mm 10mm 15mm 10mm;
-            @bottom-right {
-              content: "Page " counter(page) " of " counter(pages);
-              font-family: Arial, sans-serif;
-              font-size: 9pt;
-              color: #475569;
-            }
+            margin: 10mm 10mm 15mm 10mm;
           }
 
           /* Default screen state */
@@ -148,26 +142,13 @@ const WorkReportPage: React.FC = () => {
           }
 
           @media print {
-            /* 1. Hide everything on screen */
-            body * {
-              visibility: hidden !important;
-            }
-
             aside, header, nav, .no-print, button, select, input {
               display: none !important;
             }
 
-            /* 2. Show ONLY the dedicated clean vector report container */
-            #official-work-report-print,
-            #official-work-report-print * {
-              visibility: visible !important;
-            }
-
+            /* Show ONLY the dedicated clean vector report container */
             #official-work-report-print {
               display: block !important;
-              position: absolute !important;
-              left: 0 !important;
-              top: 0 !important;
               width: 100% !important;
               background: #ffffff !important;
               color: #0f172a !important;
@@ -189,14 +170,11 @@ const WorkReportPage: React.FC = () => {
 
             .pdf-footer-wrapper {
               display: flex !important;
-              position: fixed;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              height: 30px;
+              width: 100%;
               border-top: 1px solid #cbd5e1;
               background: #ffffff;
-              padding-top: 6px;
+              padding-top: 8px;
+              margin-top: 20px;
               align-items: center;
               justify-content: space-between;
               font-size: 9px;
@@ -579,7 +557,7 @@ const WorkReportPage: React.FC = () => {
               {company.phone && <span>Phone: {company.phone}</span>}
             </div>
             <div style={{ fontWeight: 600, color: '#334155' }}>
-              {company.companyName} &bull; Page <span className="page-counter"></span>
+              {company.companyName}
             </div>
           </div>
 

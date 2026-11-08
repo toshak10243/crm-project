@@ -828,20 +828,18 @@ export class LeadsService {
       LIMIT 6
     `);
 
-    // 10. Top Sales Team Performers based on leads handled & IVR talktime
+    // 10. Top Sales Team Performers based on leads handled
     const performersRes = await pool.query(`
       SELECT 
         u.id,
         u.name,
         u.role,
-        COUNT(DISTINCT l.id) AS leads_handled,
-        COUNT(DISTINCT c.id) AS calls_count
+        COUNT(DISTINCT l.id) AS leads_handled
       FROM users u
       LEFT JOIN leads l ON l.assigned_to = u.id
-      LEFT JOIN ivr_calls c ON c.agent_id = u.id
       WHERE u.is_active = true
       GROUP BY u.id, u.name, u.role
-      ORDER BY leads_handled DESC, calls_count DESC
+      ORDER BY leads_handled DESC
       LIMIT 5
     `);
 
