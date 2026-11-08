@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CrmLayout } from '../../components/layout/CrmLayout';
 import api from '../../lib/api';
@@ -7,16 +7,6 @@ interface StatusBreakdownItem {
   status_id: string;
   status_name: string;
   status_color: string;
-  count: number;
-}
-
-interface SourceBreakdownItem {
-  source_name: string;
-  count: number;
-}
-
-interface WeeklyTrendItem {
-  day_label: string;
   count: number;
 }
 
@@ -71,8 +61,6 @@ const WorkReportPage: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [page, setPage] = useState<number>(1);
 
-  const printAreaRef = useRef<HTMLDivElement>(null);
-
   // 1. Fetch Company Profile (for Real Fixed Header & Footer)
   const { data: aboutData } = useQuery({
     queryKey: ['settings-about-company'],
@@ -125,24 +113,11 @@ const WorkReportPage: React.FC = () => {
   });
 
   const statusBreakdown: StatusBreakdownItem[] = reportData?.statusBreakdown || [];
-  const sourceBreakdown: SourceBreakdownItem[] = reportData?.sourceBreakdown || [];
-  const weeklyTrend: WeeklyTrendItem[] = reportData?.weeklyTrend || [];
   const leads: LeadDetailItem[] = reportData?.leads || [];
   const totalCount: number = reportData?.totalCount || 0;
-  const kpis = reportData?.kpis || {
-    converted_leads: 0,
-    active_leads: 0,
-    lost_leads: 0,
-    today_followups_due: 0,
-    overdue_followups: 0,
-    conversionRate: 0,
-    callStats: { total_calls: 0, formattedTalkTime: '0m', outgoing_calls: 0, connected_calls: 0 },
-  };
 
   const selectedManagerName =
     managers.find((m) => m.id === selectedManagerId)?.name || 'All Representatives';
-
-  const maxTrend = Math.max(...weeklyTrend.map((t) => t.count), 1);
 
   // Trigger Native Clean Vector PDF Print
   const handlePrintPdf = () => {
@@ -153,43 +128,63 @@ const WorkReportPage: React.FC = () => {
     <CrmLayout>
       <div className="w-full min-h-screen bg-slate-50 text-slate-800 pb-20 font-sans">
         {/* ======================================================== */}
-        {/* ENTERPRISE PDF PRINT STYLESHEET                          */}
+        {/* STRICT PROFESSIONAL PRINT STYLESHEET                     */}
         {/* ======================================================== */}
         <style>{`
           @page {
             size: A4 portrait;
             margin: 12mm 10mm 15mm 10mm;
+            @bottom-right {
+              content: "Page " counter(page) " of " counter(pages);
+              font-family: Arial, sans-serif;
+              font-size: 9pt;
+              color: #475569;
+            }
+          }
+
+          /* Default screen state */
+          .print-only-container {
+            display: none;
           }
 
           @media print {
+            /* 1. Hide everything on screen */
+            body * {
+              visibility: hidden !important;
+            }
+
             aside, header, nav, .no-print, button, select, input {
               display: none !important;
             }
 
-            html, body {
+            /* 2. Show ONLY the dedicated clean vector report container */
+            #official-work-report-print,
+            #official-work-report-print * {
+              visibility: visible !important;
+            }
+
+            #official-work-report-print {
+              display: block !important;
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
               background: #ffffff !important;
               color: #0f172a !important;
               font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
               font-size: 11px !important;
-              margin: 0 !important;
               padding: 0 !important;
+              margin: 0 !important;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
 
-            #print-report-root {
-              padding: 0 !important;
-              margin: 0 !important;
-              max-width: 100% !important;
-            }
-
             .pdf-header-wrapper {
               display: block !important;
-              position: static;
               width: 100%;
               border-bottom: 2px solid #003884;
-              padding-bottom: 10px;
-              margin-bottom: 14px;
+              padding-bottom: 12px;
+              margin-bottom: 16px;
             }
 
             .pdf-footer-wrapper {
@@ -198,135 +193,59 @@ const WorkReportPage: React.FC = () => {
               bottom: 0;
               left: 0;
               right: 0;
-              height: 28px;
+              height: 30px;
               border-top: 1px solid #cbd5e1;
               background: #ffffff;
               padding-top: 6px;
               align-items: center;
               justify-content: space-between;
               font-size: 9px;
-              color: #64748b;
+              color: #475569;
             }
 
-            .page-number::after {
+            .page-counter::after {
               content: counter(page);
             }
 
             table {
-              page-break-inside: auto;
               width: 100% !important;
+              border-collapse: collapse !important;
             }
+
             tr {
               page-break-inside: avoid;
-              page-break-after: auto;
             }
+
             thead {
               display: table-header-group;
             }
+
             tfoot {
               display: table-footer-group;
-            }
-
-            .shadow-2xs, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl {
-              box-shadow: none !important;
-              border: 1px solid #e2e8f0 !important;
             }
 
             .break-inside-avoid {
               break-inside: avoid !important;
               page-break-inside: avoid !important;
             }
-
-            .page-break {
-              page-break-before: always;
-            }
-          }
-
-          .pdf-header-wrapper,
-          .pdf-footer-wrapper {
-            display: none;
           }
         `}</style>
 
-        <div id="print-report-root" ref={printAreaRef} className="w-full px-6 py-4 space-y-6">
-          {/* ======================================================== */}
-          {/* FIXED PRINT ONLY HEADER (LOGO + COMPANY + GST + AUDIT)   */}
-          {/* ======================================================== */}
-          <div className="pdf-header-wrapper">
-            <div className="flex items-center justify-between">
-              {/* Left: Company Logo & Brand Name */}
-              <div className="flex items-center gap-3.5">
-                {company.logoUrl ? (
-                  <img
-                    src={company.logoUrl}
-                    alt="Company Logo"
-                    className="h-12 w-12 object-contain"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-lg bg-[#003884] text-white font-black text-xl flex items-center justify-center">
-                    {(company.brandName || company.companyName || 'C').charAt(0)}
-                  </div>
-                )}
-                <div>
-                  <h1 className="text-lg font-black text-[#003884] tracking-tight leading-tight uppercase">
-                    {company.companyName || company.brandName || 'CRM ENTERPRISE'}
-                  </h1>
-                  {company.tagline && (
-                    <p className="text-[10px] text-slate-500 font-medium">{company.tagline}</p>
-                  )}
-                  <div className="flex items-center gap-3 text-[9px] text-slate-600 mt-0.5">
-                    {company.gstin && <span><strong>GSTIN:</strong> {company.gstin}</span>}
-                    {company.pan && <span><strong>PAN:</strong> {company.pan}</span>}
-                    {company.city && <span><strong>Location:</strong> {company.city}, {company.state || 'India'}</span>}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Document & Audit Credentials */}
-              <div className="text-right">
-                <div className="inline-block px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-[#003884] font-bold text-[10px] tracking-wide uppercase mb-1">
-                  OFFICIAL WORK AUDIT REPORT
-                </div>
-                <div className="text-[10px] text-slate-600 space-y-0.5">
-                  <p><strong>Generated:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
-                  <p><strong>Audited Representative:</strong> {selectedManagerName}</p>
-                  <p><strong>Date Scope:</strong> {selectedDate || 'All-Time Record Set'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ======================================================== */}
-          {/* FIXED PRINT ONLY FOOTER (WEBSITE, CONTACT & PAGE NUMBER)  */}
-          {/* ======================================================== */}
-          <div className="pdf-footer-wrapper">
-            <div className="flex items-center gap-4">
-              {company.website && <span>🌐 {company.website}</span>}
-              {company.email && <span>✉️ {company.email}</span>}
-              {company.phone && <span>📞 {company.phone}</span>}
-            </div>
-            <div className="font-semibold text-slate-700">
-              {company.companyName} &bull; Page <span className="page-number"></span>
-            </div>
-          </div>
-
-          {/* ======================================================== */}
-          {/* SCREEN TOP HEADER (No-print)                             */}
-          {/* ======================================================== */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
+        {/* ======================================================== */}
+        {/* 1. SCREEN VIEW (Interactive Filter & Search UI)          */}
+        {/* ======================================================== */}
+        <div className="w-full px-6 py-4 space-y-6 no-print">
+          {/* Header Title & Export Button */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">Work Report</h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 uppercase tracking-wide">
-                  Intelligence 360°
-                </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Audit sales team daily calling activity, conversion metrics, talk time, and complete lead pipeline kacha chitta
+                Lead status breakdown and daily activity audit
               </p>
             </div>
 
-            {/* Print / Download Button */}
             <div className="flex items-center gap-3">
               <button
                 onClick={handlePrintPdf}
@@ -342,7 +261,7 @@ const WorkReportPage: React.FC = () => {
           </div>
 
           {/* Filter Bar (Date + Manager + Search) */}
-          <div className="bg-white p-4 border border-slate-200 rounded-xl shadow-2xs no-print">
+          <div className="bg-white p-4 border border-slate-200 rounded-xl shadow-2xs">
             <div className="flex flex-wrap items-center gap-4">
               {/* Date Filter */}
               <div className="w-full sm:w-52">
@@ -374,7 +293,7 @@ const WorkReportPage: React.FC = () => {
               {/* Manager Dropdown */}
               <div className="w-full sm:w-64">
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                  Manager / Agent
+                  Manager / Representative
                 </label>
                 <select
                   value={selectedManagerId}
@@ -384,7 +303,7 @@ const WorkReportPage: React.FC = () => {
                   }}
                   className="w-full px-3 py-2 text-xs bg-slate-50 hover:bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
                 >
-                  <option value="">Select Manager (All)</option>
+                  <option value="">All Representatives</option>
                   {managers.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name} ({m.role})
@@ -444,185 +363,35 @@ const WorkReportPage: React.FC = () => {
             </div>
           </div>
 
-          {/* ======================================================== */}
-          {/* SECTION: 5 KPI METRICS CARDS                              */}
-          {/* ======================================================== */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 break-inside-avoid">
-            {/* 1. Total Leads */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Leads</span>
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-slate-900">{totalCount}</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5">In selected period</p>
-            </div>
-
-            {/* 2. Deals Won / Converted */}
-            <div className="bg-white p-4 rounded-xl border border-emerald-200 shadow-2xs bg-emerald-50/20">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Deals Won</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-emerald-600">{kpis.converted_leads}</span>
-              </div>
-              <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">{kpis.conversionRate}% Win Rate</p>
-            </div>
-
-            {/* 3. Active Pipeline */}
-            <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-2xs bg-amber-50/20">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Active Pipeline</span>
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-amber-600">{kpis.active_leads}</span>
-              </div>
-              <p className="text-[10px] text-amber-600 font-medium mt-0.5">Under negotiation</p>
-            </div>
-
-            {/* 4. Total Talk Time */}
-            <div className="bg-white p-4 rounded-xl border border-purple-200 shadow-2xs bg-purple-50/20">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700">Total Talk Time</span>
-                <span className="w-2 h-2 rounded-full bg-purple-500" />
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-purple-600">{kpis.callStats.formattedTalkTime}</span>
-              </div>
-              <p className="text-[10px] text-purple-600 font-medium mt-0.5">{kpis.callStats.total_calls} calls logged</p>
-            </div>
-
-            {/* 5. Follow-ups Due */}
-            <div className="bg-white p-4 rounded-xl border border-rose-200 shadow-2xs bg-rose-50/20 col-span-2 sm:col-span-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700">Follow-ups Due</span>
-                <span className="w-2 h-2 rounded-full bg-rose-500" />
-              </div>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-rose-600">{kpis.today_followups_due}</span>
-              </div>
-              <p className="text-[10px] text-rose-600 font-medium mt-0.5">{kpis.overdue_followups} overdue tasks</p>
-            </div>
-          </div>
-
-          {/* ======================================================== */}
-          {/* SECTION: VISUAL INTELLIGENCE (LEAD VELOCITY & CHANNELS)   */}
-          {/* ======================================================== */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 break-inside-avoid">
-            {/* 7-Day Velocity Bar Chart */}
-            <div className="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">Lead Flow Velocity (Last 7 Days)</h3>
-                  <p className="text-[10px] text-slate-400">Daily leads incoming vs active handling</p>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-[#003884]" />
-                  Leads Logged
-                </div>
-              </div>
-
-              {/* Vector Bar Chart */}
-              <div className="h-40 flex items-end justify-between gap-3 pt-4 px-2">
-                {weeklyTrend.map((t, idx) => {
-                  const pct = Math.round((t.count / maxTrend) * 100);
-                  return (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                      <span className="text-[10px] font-bold text-slate-700">{t.count}</span>
-                      <div className="w-full bg-slate-100 rounded-t h-full max-h-28 flex items-end">
-                        <div
-                          style={{ height: `${Math.max(pct, t.count > 0 ? 8 : 2)}%` }}
-                          className={`w-full rounded-t transition-all duration-300 ${
-                            t.count > 0 ? 'bg-[#003884]' : 'bg-slate-200'
-                          }`}
-                        />
-                      </div>
-                      <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">{t.day_label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Lead Sources Distribution Bars */}
-            <div className="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-              <div>
-                <div className="mb-4 pb-2 border-b border-slate-100">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">Top Lead Sources</h3>
-                  <p className="text-[10px] text-slate-400">Origin channel distribution</p>
-                </div>
-
-                <div className="space-y-3">
-                  {sourceBreakdown.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-6">No source data</p>
-                  ) : (
-                    sourceBreakdown.slice(0, 5).map((src, i) => {
-                      const sharePct = totalCount > 0 ? Math.round((src.count / totalCount) * 100) : 0;
-                      return (
-                        <div key={i} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-semibold text-slate-700">{src.source_name}</span>
-                            <span className="font-bold text-slate-900">{src.count} ({sharePct}%)</span>
-                          </div>
-                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              style={{ width: `${sharePct}%` }}
-                              className="h-full bg-gradient-to-r from-blue-500 to-[#003884] rounded-full"
-                            />
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 mt-2 text-[11px] text-slate-500 flex items-center justify-between">
-                <span>Unique Channels Tracked:</span>
-                <span className="font-bold text-slate-900">{sourceBreakdown.length}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ======================================================== */}
-          {/* SECTION 1: LEAD STATUS DISTRIBUTION TABLE                */}
-          {/* ======================================================== */}
-          <div className="space-y-3 break-inside-avoid">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 tracking-tight">Status Distribution</h2>
-              <p className="text-[11px] text-slate-500">Aggregate count across sales pipeline stages</p>
-            </div>
-
+          {/* Table 1: Status Distribution (Screen) */}
+          <div className="space-y-3">
+            <h2 className="text-sm font-bold text-slate-900 tracking-tight">Status Distribution</h2>
             <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
-              <table className="w-full text-left border-collapse text-sm">
+              <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-6">LEAD STATUS</th>
-                    <th className="py-3 px-6 text-right">LEADS COUNT</th>
+                  <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-2.5 px-4">Lead Status</th>
+                    <th className="py-2.5 px-4 text-right">Leads Count</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {statusBreakdown.length === 0 ? (
                     <tr>
-                      <td colSpan={2} className="py-8 text-center text-slate-400 text-xs">
+                      <td colSpan={2} className="py-6 text-center text-slate-400">
                         No Data Found
                       </td>
                     </tr>
                   ) : (
                     statusBreakdown.map((item) => (
-                      <tr key={item.status_id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3.5 px-6 font-semibold text-slate-800 flex items-center gap-2.5">
+                      <tr key={item.status_id} className="hover:bg-slate-50/80">
+                        <td className="py-2.5 px-4 font-semibold text-slate-800 flex items-center gap-2">
                           <span
                             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                             style={{ backgroundColor: item.status_color || '#3b82f6' }}
                           />
                           <span>{item.status_name}</span>
                         </td>
-                        <td className="py-3.5 px-6 text-right font-mono font-bold text-slate-900">
+                        <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900">
                           {item.count}
                         </td>
                       </tr>
@@ -630,9 +399,9 @@ const WorkReportPage: React.FC = () => {
                   )}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-slate-100/70 border-t-2 border-slate-200 text-sm font-bold text-slate-900">
-                    <td className="py-3.5 px-6">Total Leads</td>
-                    <td className="py-3.5 px-6 text-right font-mono text-base font-extrabold text-[#003884]">
+                  <tr className="bg-slate-100/70 border-t-2 border-slate-200 text-xs font-bold text-slate-900">
+                    <td className="py-2.5 px-4">Total Leads</td>
+                    <td className="py-2.5 px-4 text-right font-mono text-sm font-extrabold text-[#003884]">
                       {totalCount}
                     </td>
                   </tr>
@@ -641,17 +410,11 @@ const WorkReportPage: React.FC = () => {
             </div>
           </div>
 
-          {/* ======================================================== */}
-          {/* SECTION 2: LEAD DETAILS (KACHA CHITTA TABLE)             */}
-          {/* ======================================================== */}
-          <div className="space-y-3 page-break">
+          {/* Table 2: Lead Details (Screen) */}
+          <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 tracking-tight">Lead Details & Activity History</h2>
-                <p className="text-[11px] text-slate-500">Every single customer lead record, status badge, call remarks and followups</p>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-slate-600 no-print">
+              <h2 className="text-sm font-bold text-slate-900 tracking-tight">Lead Details</h2>
+              <div className="flex items-center gap-2 text-xs text-slate-600">
                 <span>Rows per page:</span>
                 <select
                   value={rowsPerPage}
@@ -659,7 +422,7 @@ const WorkReportPage: React.FC = () => {
                     setRowsPerPage(Number(e.target.value));
                     setPage(1);
                   }}
-                  className="bg-white border border-slate-300 rounded px-2.5 py-1 text-xs focus:outline-none"
+                  className="bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none"
                 >
                   <option value={10}>10</option>
                   <option value={25}>25</option>
@@ -670,69 +433,54 @@ const WorkReportPage: React.FC = () => {
 
             <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-sm">
+                <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="py-3 px-6">CUSTOMER / NAME</th>
-                      <th className="py-3 px-6">STATUS</th>
-                      <th className="py-3 px-6">SOURCE</th>
-                      <th className="py-3 px-6">NEXT FOLLOWUP</th>
-                      <th className="py-3 px-6">REMARK / ACTIVITY</th>
+                    <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-2.5 px-4">Customer Name</th>
+                      <th className="py-2.5 px-4">Status</th>
+                      <th className="py-2.5 px-4">Source</th>
+                      <th className="py-2.5 px-4">Next Followup</th>
+                      <th className="py-2.5 px-4">Remark</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {isLoading ? (
                       <tr>
-                        <td colSpan={5} className="py-10 text-center text-slate-400 text-xs">
-                          Loading leads kacha chitta...
+                        <td colSpan={5} className="py-8 text-center text-slate-400">
+                          Loading leads...
                         </td>
                       </tr>
                     ) : leads.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-10 text-center text-slate-400 text-sm">
+                        <td colSpan={5} className="py-8 text-center text-slate-400">
                           No Data Found
                         </td>
                       </tr>
                     ) : (
                       leads.map((lead) => (
-                        <tr key={lead.id} className="hover:bg-slate-50/80 transition-colors">
-                          {/* Name & Phone */}
-                          <td className="py-3 px-6 font-semibold text-slate-900 align-top">
+                        <tr key={lead.id} className="hover:bg-slate-50/80">
+                          <td className="py-2.5 px-4 font-semibold text-slate-900">
                             <div>{lead.first_name} {lead.last_name || ''}</div>
-                            <div className="text-[11px] text-slate-400 font-normal mt-0.5">
-                              {lead.phone || 'No Phone'} {lead.city ? `• ${lead.city}` : ''}
+                            <div className="text-[11px] text-slate-400 font-normal">
+                              {lead.phone || '-'} {lead.city ? `• ${lead.city}` : ''}
                             </div>
                           </td>
-
-                          {/* Status Badge */}
-                          <td className="py-3 px-6 align-top">
+                          <td className="py-2.5 px-4">
                             <span
-                              className="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold text-white shadow-2xs uppercase tracking-wide"
+                              className="inline-block px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase"
                               style={{ backgroundColor: lead.status_color || '#3b82f6' }}
                             >
                               {lead.status_name || 'NEW'}
                             </span>
                           </td>
-
-                          {/* Lead Source */}
-                          <td className="py-3 px-6 text-xs text-slate-600 align-top">
+                          <td className="py-2.5 px-4 text-slate-600">
                             {lead.lead_from || 'Direct'}
                           </td>
-
-                          {/* Next Followup Date */}
-                          <td className="py-3 px-6 text-xs text-slate-600 align-top whitespace-nowrap">
+                          <td className="py-2.5 px-4 text-slate-600 whitespace-nowrap">
                             {lead.next_followup_date || '-'}
                           </td>
-
-                          {/* Remark */}
-                          <td className="py-3 px-6 text-xs text-slate-600 align-top whitespace-pre-line leading-relaxed max-w-sm">
-                            {lead.remark ? (
-                              <div className="p-2 bg-slate-50 border border-slate-200 rounded text-slate-700 text-[11px]">
-                                {lead.remark}
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
+                          <td className="py-2.5 px-4 text-slate-600 max-w-sm">
+                            {lead.remark || '-'}
                           </td>
                         </tr>
                       ))
@@ -740,6 +488,218 @@ const WorkReportPage: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ======================================================== */}
+        {/* 2. DEDICATED PRINT CONTAINER (NO EMOJIS, CLEAN VECTOR)   */}
+        {/* Only this appears in PDF output; everything else is hidden */}
+        {/* ======================================================== */}
+        <div id="official-work-report-print" className="print-only-container">
+          {/* Header */}
+          <div className="pdf-header-wrapper">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Left: Logo & Legal Name */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                {company.logoUrl ? (
+                  <img
+                    src={company.logoUrl}
+                    alt="Company Logo"
+                    style={{ height: '48px', width: 'auto', maxHeight: '48px', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '6px',
+                      backgroundColor: '#003884',
+                      color: '#ffffff',
+                      fontWeight: 900,
+                      fontSize: '18px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {(company.brandName || company.companyName || 'C').charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#003884', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {company.companyName || company.brandName || 'CRM SYSTEM'}
+                  </div>
+                  {company.tagline && (
+                    <div style={{ fontSize: '9px', color: '#64748b', marginTop: '1px' }}>
+                      {company.tagline}
+                    </div>
+                  )}
+                  <div style={{ fontSize: '9px', color: '#475569', marginTop: '2px', display: 'flex', gap: '12px' }}>
+                    {company.gstin && <span><strong>GSTIN:</strong> {company.gstin}</span>}
+                    {company.pan && <span><strong>PAN:</strong> {company.pan}</span>}
+                    {company.city && <span><strong>Location:</strong> {company.city}, {company.state || 'India'}</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Meta Information */}
+              <div style={{ textAlign: 'right' }}>
+                <div
+                  style={{
+                    display: 'inline-block',
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    color: '#1d4ed8',
+                    fontWeight: 700,
+                    fontSize: '9px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    marginBottom: '4px',
+                  }}
+                >
+                  WORK REPORT
+                </div>
+                <div style={{ fontSize: '9px', color: '#475569', lineHeight: 1.4 }}>
+                  <div><strong>Generated:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+                  <div><strong>Representative:</strong> {selectedManagerName}</div>
+                  <div><strong>Date:</strong> {selectedDate || 'All-Time Records'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Fixed Footer */}
+          <div className="pdf-footer-wrapper">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {company.website && <span>Website: {company.website}</span>}
+              {company.email && <span>Email: {company.email}</span>}
+              {company.phone && <span>Phone: {company.phone}</span>}
+            </div>
+            <div style={{ fontWeight: 600, color: '#334155' }}>
+              {company.companyName} &bull; Page <span className="page-counter"></span>
+            </div>
+          </div>
+
+          {/* Report Body Content (Only Relevant Data: Status Distribution + Leads) */}
+          <div style={{ marginTop: '12px' }}>
+            {/* 1. Status Distribution Table */}
+            <div className="break-inside-avoid" style={{ marginBottom: '18px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                Status Distribution
+              </div>
+              <table style={{ width: '100%', border: '1px solid #cbd5e1' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9px', color: '#475569', textTransform: 'uppercase' }}>
+                    <th style={{ padding: '6px 10px', textAlign: 'left', width: '70%' }}>Lead Status</th>
+                    <th style={{ padding: '6px 10px', textAlign: 'right', width: '30%' }}>Leads Count</th>
+                  </tr>
+                </thead>
+                <tbody style={{ fontSize: '10px' }}>
+                  {statusBreakdown.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} style={{ padding: '10px', textAlign: 'center', color: '#94a3b8' }}>
+                        No Data Found
+                      </td>
+                    </tr>
+                  ) : (
+                    statusBreakdown.map((item) => (
+                      <tr key={item.status_id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '6px 10px', fontWeight: 600, color: '#1e293b' }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              backgroundColor: item.status_color || '#3b82f6',
+                              marginRight: '6px',
+                              verticalAlign: 'middle',
+                            }}
+                          />
+                          {item.status_name}
+                        </td>
+                        <td style={{ padding: '6px 10px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#0f172a' }}>
+                          {item.count}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr style={{ backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1', fontSize: '10px', fontWeight: 700 }}>
+                    <td style={{ padding: '6px 10px', color: '#0f172a' }}>Total Leads</td>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', fontFamily: 'monospace', color: '#003884', fontSize: '11px', fontWeight: 800 }}>
+                      {totalCount}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* 2. Lead Details Table */}
+            <div style={{ marginTop: '14px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                Lead Details
+              </div>
+              <table style={{ width: '100%', border: '1px solid #cbd5e1' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid #cbd5e1', fontSize: '9px', color: '#475569', textTransform: 'uppercase' }}>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', width: '25%' }}>Customer Name</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', width: '15%' }}>Status</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', width: '15%' }}>Source</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', width: '15%' }}>Next Followup</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', width: '30%' }}>Remark</th>
+                  </tr>
+                </thead>
+                <tbody style={{ fontSize: '9.5px', color: '#1e293b' }}>
+                  {leads.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '14px', textAlign: 'center', color: '#94a3b8' }}>
+                        No Data Found
+                      </td>
+                    </tr>
+                  ) : (
+                    leads.map((lead) => (
+                      <tr key={lead.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '6px 8px', verticalAlign: 'top', fontWeight: 600 }}>
+                          <div>{lead.first_name} {lead.last_name || ''}</div>
+                          <div style={{ fontSize: '8.5px', color: '#64748b', fontWeight: 400 }}>
+                            {lead.phone || '-'} {lead.city ? `• ${lead.city}` : ''}
+                          </div>
+                        </td>
+                        <td style={{ padding: '6px 8px', verticalAlign: 'top' }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '2px 6px',
+                              borderRadius: '3px',
+                              fontSize: '8.5px',
+                              fontWeight: 700,
+                              color: '#ffffff',
+                              backgroundColor: lead.status_color || '#3b82f6',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {lead.status_name || 'NEW'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '6px 8px', verticalAlign: 'top', color: '#475569' }}>
+                          {lead.lead_from || 'Direct'}
+                        </td>
+                        <td style={{ padding: '6px 8px', verticalAlign: 'top', color: '#475569', whiteSpace: 'nowrap' }}>
+                          {lead.next_followup_date || '-'}
+                        </td>
+                        <td style={{ padding: '6px 8px', verticalAlign: 'top', color: '#334155' }}>
+                          {lead.remark || '-'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
