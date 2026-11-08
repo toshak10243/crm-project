@@ -776,7 +776,7 @@ export class LeadsService {
         COUNT(l.id) AS value
       FROM leads l
       WHERE ${whereSql}
-      GROUP BY name
+      GROUP BY COALESCE(NULLIF(l.lead_from, ''), 'Direct')
       ORDER BY value DESC
       LIMIT 6
     `, params);
@@ -797,7 +797,7 @@ export class LeadsService {
       FROM leads l
       LEFT JOIN lead_statuses ls ON ls.id = l.status_id
       WHERE ${whereSql}
-      GROUP BY stage, color, ls.sort_order
+      GROUP BY COALESCE(ls.name, 'Unassigned'), COALESCE(ls.color, '#64748b'), ls.sort_order
       ORDER BY COALESCE(ls.sort_order, 99) ASC, count DESC
     `, params);
 
