@@ -384,27 +384,20 @@ const SettingsPage: React.FC = () => {
           {/* SECTION 0: ABOUT COMPANY & COMPLETE BUSINESS PROFILE       */}
           {/* ======================================================== */}
           <section id="sec-about" className="scroll-mt-20">
-            <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
-              {/* Card Header */}
-              <div className="px-6 py-5 bg-gradient-to-r from-slate-900 to-[#003884] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center backdrop-blur-2xs border border-white/20">
-                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold tracking-tight">About Company & Organization Profile</h2>
-                    <p className="text-xs text-blue-200">Manage legal business identity, logo, tax registrations (GST, PAN), contact info, address & banking details</p>
-                  </div>
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+              {/* Clean White Card Header */}
+              <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+                <div>
+                  <h2 className="text-base font-bold text-slate-800 tracking-tight">About Company</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Manage business profile, logo, GSTIN, PAN, contact, address & bank details</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => saveCompanyMutation.mutate(companyForm)}
                   disabled={saveCompanyMutation.isPending}
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-md bg-[#003884] hover:bg-blue-900 text-white font-medium text-xs transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   <span>{saveCompanyMutation.isPending ? 'Saving...' : 'Save Company Details'}</span>
@@ -412,48 +405,47 @@ const SettingsPage: React.FC = () => {
               </div>
 
               {/* Form Content */}
-              <div className="p-6 space-y-8">
+              <div className="p-6 space-y-6">
                 {/* 1. Branding & Logo */}
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 pb-1 border-b border-slate-100 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                  <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3 pb-1 border-b border-slate-100">
                     1. Identity & Branding
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
                     {/* Logo Box */}
-                    <div className="md:col-span-4 flex flex-col items-center justify-center p-5 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/70 text-center relative hover:bg-slate-50 transition-colors">
+                    <div className="md:col-span-4 flex flex-col items-center justify-center p-4 border border-dashed border-slate-200 rounded-lg bg-slate-50/50 text-center">
                       {companyForm.logoUrl ? (
-                        <div className="relative group w-full flex flex-col items-center">
+                        <div className="w-full flex flex-col items-center">
                           <img
                             src={companyForm.logoUrl}
                             alt="Company Logo"
-                            className="max-h-28 object-contain rounded-lg border border-slate-200 bg-white p-2 shadow-xs"
+                            className="max-h-24 object-contain rounded border border-slate-200 bg-white p-2"
                           />
-                          <div className="mt-3 flex gap-2">
-                            <label className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-2.5 py-1 rounded cursor-pointer border border-blue-200">
-                              Change Logo
+                          <div className="mt-2.5 flex gap-2">
+                            <label className="text-[11px] font-medium text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer border border-blue-100">
+                              Change
                               <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                             </label>
                             <button
                               type="button"
                               onClick={() => setCompanyForm((prev) => ({ ...prev, logoUrl: '' }))}
-                              className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 px-2.5 py-1 rounded border border-rose-200 cursor-pointer"
+                              className="text-[11px] font-medium text-rose-600 hover:text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 cursor-pointer"
                             >
                               Remove
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center">
-                          <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
-                            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="flex flex-col items-center py-2">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-1.5">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           </div>
-                          <span className="text-xs font-semibold text-slate-700">Upload Company Logo</span>
-                          <span className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, SVG or WEBP (Max 2MB)</span>
-                          <label className="mt-3 px-3 py-1.5 rounded-md bg-[#003884] text-white text-xs font-semibold hover:bg-blue-900 cursor-pointer transition-colors shadow-2xs">
-                            Browse File
+                          <span className="text-xs font-medium text-slate-700">Company Logo</span>
+                          <span className="text-[11px] text-slate-400">PNG, JPG (Max 2MB)</span>
+                          <label className="mt-2.5 px-3 py-1 rounded bg-[#003884] text-white text-xs font-medium hover:bg-blue-900 cursor-pointer transition-colors">
+                            Browse
                             <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                           </label>
                         </div>
@@ -461,55 +453,55 @@ const SettingsPage: React.FC = () => {
                     </div>
 
                     {/* Basic Info Fields */}
-                    <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Company Legal Name *</label>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Company Legal Name *</label>
                         <input
                           type="text"
                           value={companyForm.companyName}
                           onChange={(e) => setCompanyForm({ ...companyForm, companyName: e.target.value })}
                           placeholder="e.g. Apex Global Technologies Pvt Ltd"
-                          className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                          className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Brand / Trade Name</label>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Brand / Trade Name</label>
                         <input
                           type="text"
                           value={companyForm.brandName}
                           onChange={(e) => setCompanyForm({ ...companyForm, brandName: e.target.value })}
                           placeholder="e.g. Apex CRM"
-                          className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                          className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                         />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Tagline / Motto</label>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Tagline / Motto</label>
                         <input
                           type="text"
                           value={companyForm.tagline}
                           onChange={(e) => setCompanyForm({ ...companyForm, tagline: e.target.value })}
                           placeholder="e.g. Empowering Businesses with Next-Gen CRM Solutions"
-                          className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                          className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Official Website</label>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Official Website</label>
                         <input
                           type="text"
                           value={companyForm.website}
                           onChange={(e) => setCompanyForm({ ...companyForm, website: e.target.value })}
                           placeholder="https://yourcompany.com"
-                          className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                          className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Primary Email *</label>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Primary Email *</label>
                         <input
                           type="email"
                           value={companyForm.email}
                           onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
                           placeholder="contact@company.com"
-                          className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                          className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                         />
                       </div>
                     </div>
@@ -518,51 +510,50 @@ const SettingsPage: React.FC = () => {
 
                 {/* 2. Legal, Tax & Registration Details */}
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 pb-1 border-b border-slate-100 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                  <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3 pb-1 border-b border-slate-100">
                     2. Legal & Tax Registrations
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">GSTIN Number</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">GSTIN Number</label>
                       <input
                         type="text"
                         value={companyForm.gstin}
                         onChange={(e) => setCompanyForm({ ...companyForm, gstin: e.target.value.toUpperCase() })}
                         placeholder="e.g. 08AAAAA0000A1Z5"
                         maxLength={15}
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 uppercase"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded font-mono uppercase focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">PAN Number</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">PAN Number</label>
                       <input
                         type="text"
                         value={companyForm.pan}
                         onChange={(e) => setCompanyForm({ ...companyForm, pan: e.target.value.toUpperCase() })}
                         placeholder="e.g. ABCDE1234F"
                         maxLength={10}
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 uppercase"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded font-mono uppercase focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">CIN (Corporate ID)</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">CIN (Corporate ID)</label>
                       <input
                         type="text"
                         value={companyForm.cin}
                         onChange={(e) => setCompanyForm({ ...companyForm, cin: e.target.value.toUpperCase() })}
                         placeholder="e.g. U72900RJ2026PTC012345"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 uppercase"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded font-mono uppercase focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">MSME / Udyam Reg. No.</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">MSME / Udyam Reg. No.</label>
                       <input
                         type="text"
                         value={companyForm.msmeUdyam}
                         onChange={(e) => setCompanyForm({ ...companyForm, msmeUdyam: e.target.value.toUpperCase() })}
                         placeholder="UDYAM-RJ-XX-XXXXXXX"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 uppercase"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded font-mono uppercase focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                   </div>
@@ -570,39 +561,38 @@ const SettingsPage: React.FC = () => {
 
                 {/* 3. Communication & Contact */}
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 pb-1 border-b border-slate-100 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    3. Communication & Contact Channels
+                  <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3 pb-1 border-b border-slate-100">
+                    3. Contact Details
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Primary Phone / Mobile *</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Primary Phone *</label>
                       <input
                         type="text"
                         value={companyForm.phone}
                         onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
                         placeholder="+91 98765 43210"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Alternate Phone / Landline</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Alternate Phone</label>
                       <input
                         type="text"
                         value={companyForm.alternatePhone}
                         onChange={(e) => setCompanyForm({ ...companyForm, alternatePhone: e.target.value })}
                         placeholder="+91 80000 12345"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Customer Support Email</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Support Email</label>
                       <input
                         type="email"
                         value={companyForm.supportEmail}
                         onChange={(e) => setCompanyForm({ ...companyForm, supportEmail: e.target.value })}
                         placeholder="support@company.com"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                   </div>
@@ -610,70 +600,69 @@ const SettingsPage: React.FC = () => {
 
                 {/* 4. Registered Physical Address */}
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 pb-1 border-b border-slate-100 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+                  <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3 pb-1 border-b border-slate-100">
                     4. Registered Address
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Address Line 1</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Address Line 1</label>
                       <input
                         type="text"
                         value={companyForm.addressLine1}
                         onChange={(e) => setCompanyForm({ ...companyForm, addressLine1: e.target.value })}
                         placeholder="Plot / Office No, Building Name, Street"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Address Line 2 (Landmark / Area)</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Address Line 2</label>
                       <input
                         type="text"
                         value={companyForm.addressLine2}
                         onChange={(e) => setCompanyForm({ ...companyForm, addressLine2: e.target.value })}
                         placeholder="Area, Landmark or Tech Zone"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">City</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">City</label>
                       <input
                         type="text"
                         value={companyForm.city}
                         onChange={(e) => setCompanyForm({ ...companyForm, city: e.target.value })}
                         placeholder="e.g. Jaipur"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">State / Province</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">State</label>
                       <input
                         type="text"
                         value={companyForm.state}
                         onChange={(e) => setCompanyForm({ ...companyForm, state: e.target.value })}
                         placeholder="e.g. Rajasthan"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">PIN / Postal Code</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">PIN / Postal Code</label>
                       <input
                         type="text"
                         value={companyForm.pincode}
                         onChange={(e) => setCompanyForm({ ...companyForm, pincode: e.target.value })}
                         placeholder="e.g. 302017"
                         maxLength={10}
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Country</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Country</label>
                       <input
                         type="text"
                         value={companyForm.country}
                         onChange={(e) => setCompanyForm({ ...companyForm, country: e.target.value })}
                         placeholder="India"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                   </div>
@@ -681,77 +670,76 @@ const SettingsPage: React.FC = () => {
 
                 {/* 5. Banking & Settlement Info */}
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 pb-1 border-b border-slate-100 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-cyan-600"></span>
-                    5. Bank & Invoicing Settlement Details
+                  <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-3 pb-1 border-b border-slate-100">
+                    5. Bank & Invoicing Settlement
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Bank Name</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Bank Name</label>
                       <input
                         type="text"
                         value={companyForm.bankName}
                         onChange={(e) => setCompanyForm({ ...companyForm, bankName: e.target.value })}
                         placeholder="e.g. HDFC Bank, ICICI Bank"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Account Holder Name</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Account Holder Name</label>
                       <input
                         type="text"
                         value={companyForm.accountHolderName}
                         onChange={(e) => setCompanyForm({ ...companyForm, accountHolderName: e.target.value })}
                         placeholder="Company Account Name"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Account Number</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Account Number</label>
                       <input
                         type="text"
                         value={companyForm.accountNumber}
                         onChange={(e) => setCompanyForm({ ...companyForm, accountNumber: e.target.value })}
                         placeholder="e.g. 50200012345678"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded font-mono focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">IFSC Code</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">IFSC Code</label>
                       <input
                         type="text"
                         value={companyForm.ifscCode}
                         onChange={(e) => setCompanyForm({ ...companyForm, ifscCode: e.target.value.toUpperCase() })}
                         placeholder="e.g. HDFC0001234"
                         maxLength={11}
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 uppercase"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded font-mono uppercase focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Company UPI ID / VPA</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Company UPI ID / VPA</label>
                       <input
                         type="text"
                         value={companyForm.upiId}
                         onChange={(e) => setCompanyForm({ ...companyForm, upiId: e.target.value.toLowerCase() })}
                         placeholder="company@bank"
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded font-mono focus:outline-none focus:border-[#003884]"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Bottom Save Action */}
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
                   <button
                     type="button"
                     onClick={() => saveCompanyMutation.mutate(companyForm)}
                     disabled={saveCompanyMutation.isPending}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#003884] hover:bg-blue-900 text-white font-semibold text-xs shadow-md transition-all cursor-pointer disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-5 py-2 rounded-md bg-[#003884] hover:bg-blue-900 text-white font-medium text-xs transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span>{saveCompanyMutation.isPending ? 'Saving...' : 'Save All Company Details'}</span>
+                    <span>{saveCompanyMutation.isPending ? 'Saving...' : 'Save Company Details'}</span>
                   </button>
                 </div>
               </div>
