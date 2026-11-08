@@ -1,164 +1,193 @@
 # CRM Lead Management System
 
-A full-featured Lead Management CRM built for businesses to manage their leads, clients, quotations, and sales pipeline. This is a production-grade CRM system — not a demo project.
+A full-featured, enterprise-grade multi-tenant Lead Management CRM designed for modern businesses to streamline sales pipelines, lead conversions, team collaboration, automated communication, and performance auditing.
 
 ---
 
-## What is this?
+## Overview
 
-This CRM helps businesses:
-- Capture leads from multiple sources (website, WhatsApp, IndiaMART, Meta Ads, etc.)
-- Track leads through a sales pipeline
-- Auto-assign leads to sales agents
-- Manage follow-ups, tasks, and communications
-- Create and send quotations
-- Convert leads to clients
-- Handle invoices and payments
-- Run automated workflows
-- Get reports and analytics
+This CRM empowers organizations to:
+- Capture and centralize leads from diverse channels (Website, WhatsApp, IndiaMART, Meta Ads, Manual entry).
+- Track leads dynamically across custom color-coded sales pipelines.
+- Auto-assign incoming leads to sales agents and branch teams.
+- Manage follow-ups, pending interactions, and automated birthday reminders.
+- Conduct integrated cloud telephony (IVR Incoming & Outgoing call logging with durations).
+- Run WhatsApp automation campaigns via WA Daddy (Contacts, Campaigns, Meta-style Templates, Real-time Chat inbox).
+- Audit sales productivity via detailed Work Reports (KPI cards, 7-day velocity charts, channel distributions, and 1-click HTML/PDF kacha-chitta reports).
+- Dynamically customize form fields, statuses, message templates, branches, and lead sources without changing any code.
 
 ---
 
-## Who uses this?
+## Architecture & Hierarchy
 
 ```
-Super Admin (Us — the CRM owner)
-    └── Admin (Our client — the business owner)
-            └── Users/Agents (Admin ki team)
+Super Admin (Platform Owner)
+    └── Admin (Tenant / Business Owner)
+            └── Managers & Agents (Branch Sales Team)
 ```
 
-- **Super Admin** — Manually creates company accounts when payment is received. No payment gateway needed.
-- **Admin** — Gets login credentials, manages their own team and leads.
-- **Users/Agents** — Work under Admin, handle leads daily.
+- **Super Admin**: Provisions tenant companies upon manual onboarding or plan approval, manages audit logs, system health, revenue analytics, and global background jobs.
+- **Admin**: Configures custom statuses, WhatsApp/Email templates, custom form fields, branches, and monitors team performance.
+- **Users / Agents**: Operates leads daily, logs calls, records follow-up remarks, and closes deals.
 
-Each company gets their **own separate database** — complete data isolation.
+Each company enjoys complete database-level multi-tenancy: **one isolated PostgreSQL database per tenant**.
 
 ---
 
 ## Tech Stack
 
-| Part | Technology |
-|---|---|
-| Frontend | React 18 + TypeScript + Vite |
-| UI | shadcn/ui + Tailwind CSS v3 |
-| State Management | Zustand |
-| API Calls | TanStack Query (React Query v5) |
-| Forms | React Hook Form + Zod |
-| Charts | Recharts |
-| Realtime | Socket.io |
-| Backend | NestJS + TypeScript |
-| Database | PostgreSQL (raw SQL — no ORM) |
-| Cache & Queue | Redis + BullMQ |
-| Auth | JWT (Access + Refresh tokens) |
-| File Storage | Local disk (Phase 1) |
-| Email | Nodemailer (SMTP) |
-| PDF | Puppeteer |
+| Component | Technology | Description |
+|---|---|---|
+| Frontend | React 18 + TypeScript + Vite | Ultra-fast client-side bundle |
+| Styling | Tailwind CSS v3 | Clean enterprise UI with responsive design |
+| State Management | Zustand | Lightweight, persistent client stores |
+| Data Fetching | Axios + TanStack Query v5 | Cached, optimistic, and reliable API communications |
+| Forms & Validation | React Hook Form + Zod | Strict runtime schema validation |
+| Realtime | Socket.io Client | Instant notifications and chat synchronization |
+| Backend Framework | NestJS + TypeScript | Modular, scalable enterprise architecture |
+| Database Engine | PostgreSQL (pg driver) | High-performance raw SQL queries with parameterization |
+| Caching & Queues | Redis + BullMQ | Background job orchestration and token cache |
+| Authentication | JWT (HMAC SHA-256) | 15-min rotating access tokens + 30-day refresh sessions |
+| Reporting & Export | Puppeteer & HTML-based Print Engine | Clean vector PDF generation for work reports |
 
 ---
 
-## Project Structure
+## Repository Structure
 
 ```
 crm-project/
-├── backend/          # NestJS API server
-├── frontend/         # React web app
-└── README.md         # This file
+├── backend/
+│   ├── src/
+│   │   ├── database/          # DatabaseModule with dynamic tenant pool resolution
+│   │   ├── modules/
+│   │   │   ├── auth/          # Unified multi-tenant login & token rotation
+│   │   │   ├── branches/      # Branch master management
+│   │   │   ├── form-fields/   # Dynamic custom field builder
+│   │   │   ├── ivr/           # Telephony call logging & duration analytics
+│   │   │   ├── leads/         # Lead lifecycle, pipeline scoring & auto-assignment
+│   │   │   ├── settings/      # Statuses, email/WhatsApp templates & sources
+│   │   │   ├── super-admin/   # Multi-tenant management & platform control
+│   │   │   ├── users/         # Team & RBAC administration
+│   │   │   ├── wadaddy/       # WhatsApp automation, campaigns & chatbox
+│   │   │   └── work-report/   # Daily sales auditing & performance reports
+│   │   ├── scripts/           # Migration & tenant seeding utilities
+│   │   └── sql/tenant/        # Idempotent raw SQL migration scripts
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/        # Layout, modals, header actions, breadcrumbs
+│   │   ├── pages/
+│   │   │   ├── auth/          # Unified Login & Password Management
+│   │   │   ├── dashboard/     # Executive Dashboard & analytics
+│   │   │   ├── finance/       # IVR logs & WA Daddy WhatsApp suite
+│   │   │   ├── leads/         # Add Lead, All Leads, Followups, Today Birthday
+│   │   │   ├── masters/       # Branch & Form Field dynamic master tables
+│   │   │   ├── reports/       # Work Reports & audit kacha-chitta with PDF export
+│   │   │   ├── settings/      # Lead Statuses, WhatsApp/Email templates, Lead Sources
+│   │   │   ├── super-admin/   # Super admin cockpit, tenant provisioning, audit logs
+│   │   │   └── users/         # Admin Users & Master Admin profiles
+│   │   ├── store/             # Auth & Session state
+│   │   └── router/            # Protected client-side routing
+│   └── package.json
+└── README.md
 ```
 
 ---
 
-## Prerequisites
+## Getting Started
 
-Make sure you have these installed before running the project:
+### Prerequisites
 
-- **Node.js** v20 or higher — https://nodejs.org
-- **pnpm** — `npm install -g pnpm`
-- **PostgreSQL** v15 or higher — https://www.postgresql.org/download
-- **Redis** v7 or higher — https://redis.io/download (Windows: use Redis via WSL or Docker)
-- **Git** — https://git-scm.com
+- **Node.js** v20.x or higher
+- **pnpm** v9.x or higher (`npm install -g pnpm`)
+- **PostgreSQL** v15.x or higher (Running on port `5432`)
+- **Redis** v7.x or higher (Running on port `6379`)
 
 ---
 
-## Database Setup
+### Database Setup
 
-### Step 1 — Start PostgreSQL
-
-Make sure PostgreSQL is running on your machine on port `5432`.
-
-### Step 2 — Create Master Database
-
-Open pgAdmin or psql and run:
-
+1. Verify that your PostgreSQL service is running on port `5432`.
+2. Create the master platform database:
 ```sql
 CREATE DATABASE crm_master;
 ```
-
-This is the only database you create manually. All client databases are created automatically by the system.
-
-### Step 3 — Redis
-
-Make sure Redis is running on port `6379`.
+*(Tenant databases like `crm_tenant_{slug}` are provisioned automatically when companies are onboarded or migrated).*
 
 ---
 
-## Backend Setup
+### Backend Configuration
 
+1. Open your terminal and navigate to the backend directory:
 ```bash
-# Go to backend folder
 cd backend
+```
 
-# Install dependencies
+2. Install all dependencies:
+```bash
 pnpm install
+```
 
-# Create environment file
-copy .env.example .env
-# (Edit .env with your database credentials)
+3. Setup your environment variables by copying `.env.example`:
+```bash
+cp .env.example .env
+```
+*(On Windows Command Prompt: `copy .env.example .env`)*
 
-# Run SQL migrations (creates tables in crm_master)
+4. Run the master platform migrations:
+```bash
 pnpm run migrate
+```
 
-# Create first Super Admin account
+5. Seed the default Super Admin user:
+```bash
 pnpm run seed:super-admin
+```
 
-# Start development server
+6. Launch the development server:
+```bash
 pnpm run start:dev
 ```
-
-Backend will run on: `http://localhost:3001`
+Backend will be listening on: `http://localhost:3001` (API: `http://localhost:3001/api`)
 
 ---
 
-## Frontend Setup
+### Frontend Configuration
 
+1. Open another terminal and navigate to the frontend directory:
 ```bash
-# Go to frontend folder
 cd frontend
-
-# Install dependencies
-pnpm install
-
-# Create environment file
-copy .env.example .env
-
-# Start development server
-pnpm run dev
 ```
 
-Frontend will run on: `http://localhost:5173`
+2. Install all frontend dependencies:
+```bash
+pnpm install
+```
+
+3. Create the environment file:
+```bash
+cp .env.example .env
+```
+
+4. Start the Vite development server:
+```bash
+pnpm run dev
+```
+Frontend will be running on: `http://localhost:5173`
 
 ---
 
-## Environment Variables
+## Environment Variables Reference
 
 ### Backend `.env`
 
 ```env
-# App
+# Server
 PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 
-# Master Database (crm_master)
+# Master Database
 MASTER_DB_HOST=localhost
 MASTER_DB_PORT=5432
 MASTER_DB_NAME=crm_master
@@ -170,21 +199,21 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
 
-# JWT Secrets (change these in production — use long random strings)
-JWT_ACCESS_SECRET=your-access-secret-min-32-characters-long
-JWT_REFRESH_SECRET=your-refresh-secret-min-32-characters-long
+# Security & JWT Tokens
+JWT_ACCESS_SECRET=your_super_secret_access_key_min_32_characters
+JWT_REFRESH_SECRET=your_super_secret_refresh_key_min_32_characters
 JWT_ACCESS_EXPIRES=15m
 JWT_REFRESH_EXPIRES=30d
 
-# First Super Admin Account
+# Initial Super Admin
 SUPER_ADMIN_EMAIL=superadmin@yourcrm.com
 SUPER_ADMIN_PASSWORD=SuperSecurePassword@123
 
-# Email (SMTP)
+# SMTP Email
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=your@gmail.com
-SMTP_PASS=your-app-password
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
 
 # File Uploads
 UPLOAD_DIR=./uploads
@@ -200,161 +229,65 @@ VITE_SOCKET_URL=http://localhost:3001
 
 ---
 
-## How it Works — Database Architecture
+## Core Modules & Implemented Features
 
-```
-crm_master (1 database)
-    ├── companies table       → list of all client companies
-    ├── super_admins table    → our super admin accounts
-    └── super_admin_tokens    → refresh tokens
+### 1. Lead Management Engine
+- **Add Lead**: Rich intake form featuring dynamic phone prefixes, auto-populated country codes, dynamic branches, dynamic lead sources, and custom user-defined form fields.
+- **Pipeline & Follow-ups**: Real-time filtering by status, search keyword, date, branch, and sales agent. Includes specialized views for *Today Followup*, *All Followup*, and *Today Birthday*.
+- **Auto Lead Assignment**: Integrated toggle to round-robin or auto-assign fresh leads across available sales executives.
 
-crm_client_abc_corp (per company)
-    ├── users
-    ├── leads
-    ├── clients
-    ├── quotations
-    ├── deals
-    ├── tasks
-    ├── activities
-    ├── invoices
-    ├── payments
-    ├── workflows
-    ├── notifications
-    ├── audit_logs
-    └── ... (30+ tables)
-```
+### 2. Settings & Dynamic Customizations
+- **Lead Statuses**: Add, edit, or delete statuses with custom labels and native color picker integration.
+- **WhatsApp Message Templates**: Reusable pre-approved templates for automated outreach.
+- **Email Templates**: HTML-ready notification and follow-up templates.
+- **Lead From (Sources)**: Dynamic lead origins (e.g. Website, Toshak Sharma, IndiaMART, Walk-in).
 
-When Super Admin creates a new company:
-1. Entry added in `crm_master.companies`
-2. New database `crm_client_{slug}` is created automatically
-3. All tables are provisioned automatically
-4. Admin user is created with a temporary password
-5. Email sent to Admin with login credentials
+### 3. WA Daddy (WhatsApp Suite)
+- **Contacts**: Contact list management with bulk import and instant segmentation.
+- **Campaigns**: Broadcast campaigns with delivery, read, and failure tracking.
+- **Templates**: Pre-designed Meta-style cards and interactive promotional message layouts.
+- **Live Chatbox**: Threaded real-time messaging interface with full message history and contact context.
 
----
+### 4. Work Report & Audit Trail
+- **Summary Metrics**: Real-time count of Total Leads, Deals Won (Win Rate %), Active Pipeline, Total Talk Time (minutes logged from IVR), and Overdue Follow-ups.
+- **Graphical Analytics**: 7-day lead velocity bar chart, source channel distribution bars, and status distribution breakdown.
+- **Detailed Kacha-Chitta**: Comprehensive agent-by-agent activity table detailing lead status, remarks, talk times, and conversion outcomes.
+- **Exporting**: 1-click professional print and HTML-based PDF export.
 
-## API Structure
-
-```
-http://localhost:3001/api/
-
-# Super Admin routes (only Super Admin can access)
-/super-admin/auth/login
-/super-admin/companies
-/super-admin/companies/:id/activate
-/super-admin/companies/:id/deactivate
-
-# Client Auth routes
-/auth/login
-/auth/refresh
-/auth/logout
-/auth/change-password
-
-# Main CRM routes (JWT protected)
-/leads
-/clients
-/quotations
-/deals
-/tasks
-/activities
-/users
-/reports
-/settings
-...
-```
+### 5. Multi-Tenant Database Architecture
+- Raw SQL parameterization prevents injection attacks while maintaining peak query speeds.
+- Complete data isolation ensures Tenant A can never read or access Tenant B records.
+- Tenant database routing is determined dynamically via decoded JWT claims without manual connection overhead.
 
 ---
 
-## Build Phases
-
-This project is built in phases — one module at a time:
-
-| Phase | What we build | Status |
-|---|---|---|
-| Phase 1 | Auth, Super Admin, Company provisioning, User management | 🔄 In Progress |
-| Phase 2 | Lead management, Pipeline, Scoring, Auto assignment | ⏳ Pending |
-| Phase 3 | Follow-ups, Tasks, Communications, Notifications | ⏳ Pending |
-| Phase 4 | Quotations, Deals, Documents | ⏳ Pending |
-| Phase 5 | Clients 360°, Finance, Invoices | ⏳ Pending |
-| Phase 6 | Automation Engine, AI Assistant | ⏳ Pending |
-| Phase 7 | Reports, Masters, Settings | ⏳ Pending |
-| Phase 8 | Security (2FA, IP restriction), Polish | ⏳ Pending |
-
----
-
-## Key Features
-
-### Dynamic Forms
-Admin can add custom fields to Lead/Client forms from the settings panel. No code change needed — fully dynamic.
-
-### Role-Based Access Control
-Granular permissions — module level, sub-module level, action level (View, Add, Edit, Delete, Export, Import, Approve).
-
-### Multi-tenant Architecture
-Every company has its own database. One company's data never touches another's.
-
-### Automation Engine
-Admin can set up workflows — e.g., "When a lead score goes above 80, auto-assign to senior agent and send WhatsApp message."
-
-### Real-time Notifications
-In-app notifications via Socket.io. Also supports Email, WhatsApp, SMS notifications.
-
----
-
-## Scripts
+## Build & Production Deployment
 
 ### Backend
-
 ```bash
-pnpm run start:dev      # Start in development (auto-reload)
-pnpm run start:prod     # Start in production
-pnpm run build          # Build for production
-pnpm run migrate        # Run SQL migrations
-pnpm run seed:super-admin  # Create first super admin
-pnpm run test           # Run unit tests
+cd backend
+pnpm run build
+pnpm run start:prod
 ```
 
 ### Frontend
-
 ```bash
-pnpm run dev            # Start development server
-pnpm run build          # Build for production
-pnpm run preview        # Preview production build
+cd frontend
+pnpm run build
+pnpm run preview
 ```
 
 ---
 
-## Common Issues
+## Developer Guidelines
 
-**PostgreSQL connection error**
-- Check if PostgreSQL is running
-- Check `.env` credentials match your PostgreSQL setup
-
-**Redis connection error**
-- Check if Redis is running on port 6379
-- On Windows, use WSL or Docker for Redis
-
-**pnpm not found**
-```bash
-npm install -g pnpm
-```
-
-**Port already in use**
-- Backend default: 3001 — change `PORT` in `.env`
-- Frontend default: 5173 — runs automatically on next available port
-
----
-
-## Notes for Developers
-
-- Sab SQL queries raw likhi hain — koi ORM nahi (`$1`, `$2` parameterized queries use karo)
-- Har client ka data alag database mein hai — JWT token mein `dbName` hota hai
-- Comments Hinglish mein hain — English + Hindi mix
-- Super Admin aur Client Auth bilkul alag hain
-- Koi payment gateway nahi — Super Admin manually activate karta hai
+- **No ORM**: All database interactions use clean raw SQL with parameterized values (`$1`, `$2`, etc.) via `pg` connection pools.
+- **Security Protocols**: Access tokens expire after 15 minutes and automatically rotate via silent refresh. After 30 days of inactivity, users are gracefully logged out with an enterprise notification modal.
+- **Clean Code**: Strict TypeScript typing across both frontend (`crm.types.ts`) and backend DTOs.
+- **Theme**: Clean, high-contrast, professional enterprise UI.
 
 ---
 
 ## License
 
-Private — Internal use only. Not open source.
+Private and proprietary. Developed for authorized enterprise use only.
