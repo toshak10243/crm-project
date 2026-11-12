@@ -13,6 +13,7 @@ import { FormFieldsModule } from './modules/form-fields/form-fields.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { WorkReportModule } from './modules/work-report/work-report.module';
 import { WaDaddyModule } from './modules/wadaddy/wadaddy.module';
+import { DigimailModule } from './modules/digimail/digimail.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { WaDaddyModule } from './modules/wadaddy/wadaddy.module';
     SettingsModule,
     WorkReportModule,
     WaDaddyModule,
+    DigimailModule,
   ],
 })
 export class AppModule {}

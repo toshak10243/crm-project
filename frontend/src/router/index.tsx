@@ -36,6 +36,7 @@ import SettingsPage from '../pages/settings/Settings';
 import WorkReportPage from '../pages/reports/WorkReport';
 import IvrPage from '../pages/finance/IvrPage';
 import WaDaddyPage from '../pages/finance/WaDaddyPage';
+import DigiMailPage from '../pages/digimail/DigiMail';
 
 // Super Admin Route Guard
 const SuperAdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -268,6 +269,11 @@ export const router = createBrowserRouter([
   {
     path: '/wa-daddy/chat',
     element: <PrivateRoute><WaDaddyPage view="chat" /></PrivateRoute>,
+  },
+  // DigiMail (Bulk Email & Campaign Hub)
+  {
+    path: '/digimail',
+    element: <PrivateRoute><DigiMailPage /></PrivateRoute>,
   },
   // Work Report
   {
