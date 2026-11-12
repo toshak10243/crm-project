@@ -94,24 +94,24 @@ export const CrmLayout: React.FC<{
   const getPageInfo = () => {
     const p = location.pathname.toLowerCase();
     if (p.includes('branch')) return { breadcrumb: 'Branch', title: 'Branch' };
-    if (p.includes('form-field') || p.includes('formfield')) return { breadcrumb: 'FormFields', title: 'FormFields' };
-    if (p.includes('view-lead') || p.includes('viewlead')) return { breadcrumb: 'Lead', title: 'View Lead' };
-    if (p.includes('add-lead') || p.includes('addlead')) return { breadcrumb: 'Lead', title: 'Add Lead' };
-    if (p.includes('all-followup') || p.includes('allfollowup')) return { breadcrumb: 'Allfollowup', title: 'Allfollowup' };
-    if (p.includes('today-followup') || p.endsWith('/followup') || p.includes('followup')) return { breadcrumb: 'Followup', title: 'Followup' };
+    if (p.includes('form-field') || p.includes('formfield')) return { breadcrumb: 'Form Fields', title: 'Form Fields' };
+    if (p.includes('view-lead') || p.includes('viewlead')) return { breadcrumb: 'View Lead', title: 'View Lead' };
+    if (p.includes('add-lead') || p.includes('addlead')) return { breadcrumb: 'Add Lead', title: 'Add Lead' };
+    if (p.includes('all-followup') || p.includes('allfollowup')) return { breadcrumb: 'All Followup', title: 'All Followup' };
+    if (p.includes('today-followup') || p.endsWith('/followup') || p.includes('followup')) return { breadcrumb: 'Today Followup', title: 'Today Followup' };
     if (p.includes('birthday')) return { breadcrumb: 'Birthdays', title: 'Birthdays' };
-    if (p.includes('all-leads') || p.includes('/lead')) return { breadcrumb: 'Lead', title: 'Lead' };
-    if (p.includes('incoming')) return { breadcrumb: 'Incoming', title: 'Incoming' };
-    if (p.includes('outgoing')) return { breadcrumb: 'Outgoing', title: 'Outgoing' };
-    if (p.includes('masters') || p.includes('admin-users/master')) return { breadcrumb: 'Masters', title: 'Masters' };
-    if (p.includes('admin-user') || p.includes('adminuser')) return { breadcrumb: 'AdminUser', title: 'AdminUser' };
-    if (p.includes('setting')) return { breadcrumb: 'Setting', title: 'Setting' };
+    if (p.includes('all-leads') || p.includes('/lead')) return { breadcrumb: 'All Leads', title: 'All Leads' };
+    if (p.includes('incoming')) return { breadcrumb: 'Incoming Calls', title: 'Incoming Calls' };
+    if (p.includes('outgoing')) return { breadcrumb: 'Outgoing Calls', title: 'Outgoing Calls' };
+    if (p.includes('masters') || p.includes('admin-users/master')) return { breadcrumb: 'Master Admins', title: 'Master Admins' };
+    if (p.includes('admin-user') || p.includes('adminuser')) return { breadcrumb: 'Admin Users', title: 'Admin Users' };
+    if (p.includes('setting')) return { breadcrumb: 'Settings', title: 'Settings' };
     if (p.includes('digimail')) return { breadcrumb: 'DigiMail', title: 'DigiMail Hub' };
     if (p.includes('quotation')) return { breadcrumb: 'Quotations', title: 'Quotations' };
     if (p.includes('invoice')) return { breadcrumb: 'Invoices', title: 'Invoices' };
     if (p.includes('work-report')) return { breadcrumb: 'Work Report', title: 'Work Report' };
-    if (p.includes('change-password') || p.includes('changepassword')) return { breadcrumb: 'ChangePassword', title: 'ChangePassword' };
-    return { breadcrumb: 'MasterDashboard', title: 'MasterDashboard' };
+    if (p.includes('change-password') || p.includes('changepassword')) return { breadcrumb: 'Change Password', title: 'Change Password' };
+    return { breadcrumb: 'Master Dashboard', title: 'Master Dashboard' };
   };
 
   const pageInfo = getPageInfo();
@@ -586,16 +586,12 @@ export const CrmLayout: React.FC<{
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#f8fafc]">
         {/* Top Navbar / Header with Fullscreen Button */}
-        <header className="h-16 flex-shrink-0 bg-transparent px-8 flex items-center justify-between">
-          {/* Breadcrumbs matching current route */}
-          <div className="flex flex-col">
-            <div className="text-xs text-slate-500 font-medium">
-              Pages <span className="mx-1">/</span>{' '}
-              <span className="text-slate-700 font-semibold">{pageInfo.breadcrumb}</span>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight leading-tight">
-              {pageInfo.title}
-            </h1>
+        <header className="h-14 flex-shrink-0 bg-transparent px-8 flex items-center justify-between">
+          {/* Subtle Clean Breadcrumb without duplicate large H1 */}
+          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 select-none">
+            <span className="text-slate-400">Pages</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-700 font-semibold">{pageInfo.breadcrumb}</span>
           </div>
 
           {/* Right Action Icons & Profile Dropdown */}
