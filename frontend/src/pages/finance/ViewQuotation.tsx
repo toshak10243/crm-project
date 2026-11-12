@@ -56,12 +56,55 @@ interface Quotation {
   currency: string;
   terms?: string;
   notes?: string;
-  sent_at?: string;
-  accepted_at?: string;
-  accepted_by_name?: string;
-  accepted_notes?: string;
-  converted_invoice_id?: string;
   created_at: string;
+}
+
+// Number to Words in Indian English (e.g. INR Twenty Five Thousand Only)
+function numberToWordsINR(num: number): string {
+  if (!num || isNaN(num) || num <= 0) return 'Zero';
+  
+  const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  const inWords = (n: number): string => {
+    if (n < 20) return a[n];
+    const digit = n % 10;
+    return b[Math.floor(n / 10)] + (digit ? ' ' + a[digit] : '');
+  };
+
+  const integerPart = Math.floor(num);
+  let str = '';
+
+  const crores = Math.floor(integerPart / 10000000);
+  let rem = integerPart % 10000000;
+  if (crores > 0) {
+    str += (crores > 99 ? inWords(Math.floor(crores / 100)) + ' Hundred ' + inWords(crores % 100) : inWords(crores)) + ' Crore ';
+  }
+
+  const lakhs = Math.floor(rem / 100000);
+  rem = rem % 100000;
+  if (lakhs > 0) {
+    str += inWords(lakhs) + ' Lakh ';
+  }
+
+  const thousands = Math.floor(rem / 1000);
+  rem = rem % 1000;
+  if (thousands > 0) {
+    str += inWords(thousands) + ' Thousand ';
+  }
+
+  const hundreds = Math.floor(rem / 100);
+  rem = rem % 100;
+  if (hundreds > 0) {
+    str += inWords(hundreds) + ' Hundred ';
+  }
+
+  if (rem > 0) {
+    str += inWords(rem) + ' ';
+  }
+
+  return str.trim();
 }
 
 export const ViewQuotationPage: React.FC = () => {
@@ -85,7 +128,7 @@ export const ViewQuotationPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch Quotation Data
+  // 1. Fetch Quotation Data
   const { data: quote, isLoading, isError } = useQuery<Quotation>({
     queryKey: ['quotation-detail', id],
     queryFn: async () => {
@@ -94,6 +137,33 @@ export const ViewQuotationPage: React.FC = () => {
     },
     enabled: !!id,
   });
+
+  // 2. Fetch Company Settings Data
+  const { data: settingsData } = useQuery({
+    queryKey: ['company-settings'],
+    queryFn: async () => {
+      const res = await api.get('/settings');
+      return res.data?.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const company = settingsData?.aboutCompany || {};
+
+  // Company Details with exact fallbacks from official DigiInk Solutions PDF
+  const companyName = company.companyName || company.brandName || 'Digiink Solutions LLP';
+  const addressLine1 = company.addressLine1 || '318 3rd and 4th, Metro Station New Aatish Market,';
+  const addressLine2 = company.addressLine2 || 'N-317, Mansarovar, Jaipur, Rajasthan 302020';
+  const gstin = company.gstin || '08AAVFD6708K1ZS';
+  const pan = company.pan || 'AAVFD6708K';
+  const email = company.email || company.supportEmail || 'digiinksolutions2505@gmail.com';
+  const phone = company.phone || '8740011262';
+  const bankName = company.bankName || 'IDFC FIRST';
+  const accountHolderName = company.accountHolderName || 'Digiink Solutions LLP';
+  const accountNumber = company.accountNumber || '69024154995';
+  const ifscCode = company.ifscCode || 'IDFB0042128';
+  const accountType = 'Current';
+  const logoUrl = company.logoUrl || '/logo.png';
 
   const handlePrint = () => {
     window.print();
@@ -118,7 +188,7 @@ export const ViewQuotationPage: React.FC = () => {
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center max-w-sm w-full">
           <div className="w-10 h-10 border-4 border-[#003884] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <h3 className="text-sm font-bold text-slate-800">Loading Quotation...</h3>
-          <p className="text-xs text-slate-500 mt-1">Retrieving quotation specifications and scope</p>
+          <p className="text-xs text-slate-500 mt-1">Retrieving official specifications and commercials</p>
         </div>
       </div>
     );
@@ -148,56 +218,100 @@ export const ViewQuotationPage: React.FC = () => {
     );
   }
 
-  // Format Dates
-  const issueDateFormatted = new Date(quote.quotation_date || quote.created_at).toLocaleDateString('en-GB', {
-    day: '2-digit',
+  // Format Dates matching PDF style (e.g. Oct 28, 2026)
+  const quotationDate = new Date(quote.quotation_date || quote.created_at);
+  const formattedQuoteDate = quotationDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const formattedFooterDate = quotationDate.toLocaleDateString('en-GB', {
+    day: 'numeric',
     month: 'short',
     year: 'numeric',
   });
 
-  const validTillFormatted = quote.valid_until
-    ? new Date(quote.valid_until).toLocaleDateString('en-GB', {
-        day: '2-digit',
+  const validUntilDate = quote.valid_until ? new Date(quote.valid_until) : null;
+  const formattedValidUntil = validUntilDate
+    ? validUntilDate.toLocaleDateString('en-US', {
         month: 'short',
+        day: 'numeric',
         year: 'numeric',
       })
     : 'Open';
 
-  // Fallback Scope Sections if none added
+  // Extract Scope Sections & deliverables
   const sectionsToRender: ScopeSection[] = (quote.sections && quote.sections.length > 0)
     ? quote.sections
     : (quote.items && quote.items.length > 0)
     ? quote.items.map((it) => ({
         title: it.name,
-        content: it.description || 'Full scope implementation, testing, onboarding and deployment.',
-        goal: 'Convert visitors into Direct Booking & Growth',
+        content: it.description || 'Full scope implementation, setup, testing and deployment.',
+        goal: 'Convert visitors into Direct Booking',
       }))
     : [
         {
           title: quote.title || 'Digital Solution Implementation',
           content: '1. Requirement gathering & architecture\n2. Design, UI/UX & Responsive Development\n3. Integration, Quality Assurance & Deployment\n4. Onboarding, Training & Technical Support',
-          goal: 'Business Transformation & Client Success',
+          goal: 'Convert visitors into Direct Booking',
         },
       ];
 
-  const gstRate = quote.gst_rate !== undefined ? Number(quote.gst_rate) : 18;
-  const isIgst = quote.gst_type === 'igst';
-  const isGstExempt = quote.gst_type === 'none';
+  const amountInWords = `INR ${numberToWordsINR(quote.total_amount)} Only`;
+  const paymentMethod = quote.payment_method || 'Bank transfer (NEFT / RTGS / IMPS) / UPI';
+  const notesText = quote.notes || 'Thank you for choosing DigiInk Solutions for your marketing needs. We look forward to working with you.';
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] text-slate-800 font-sans antialiased">
       {/* ======================================================== */}
-      {/* TOP NAVBAR (MATCHING SCREENSHOT 1 & 2)                  */}
+      {/* PRINT STYLES (EXACT PIXEL REPLICA OF USER'S PDFS)        */}
       {/* ======================================================== */}
-      <header className="bg-white border-b border-slate-200/80 px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-2xs print:hidden">
-        {/* Left: Branding */}
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm 10mm;
+          }
+          body {
+            background-color: white !important;
+            color: #111827 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .print-container {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+          }
+          .page-break {
+            page-break-after: always;
+          }
+        }
+      `}</style>
+
+      {/* ======================================================== */}
+      {/* TOP NAVBAR (SCREENSHOT HEADER)                           */}
+      {/* ======================================================== */}
+      <header className="bg-white border-b border-slate-200/80 px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-2xs no-print">
+        {/* Left: Branding & Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#003884] flex items-center justify-center text-white font-black text-sm shadow-sm ring-2 ring-blue-100">
-            D
-          </div>
+          <img
+            src={logoUrl}
+            alt="Logo"
+            className="w-10 h-10 object-contain rounded-xl border border-slate-100 shadow-2xs bg-white p-0.5"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/logo.png';
+            }}
+          />
           <div>
             <div className="text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5">
-              <span>Digiink Solutions LLP</span>
+              <span>{companyName}</span>
             </div>
             <div className="text-[11px] text-slate-500 font-medium">
               Quotation &amp; Invoice Management System
@@ -228,12 +342,12 @@ export const ViewQuotationPage: React.FC = () => {
       {/* ======================================================== */}
       {/* MAIN CONTAINER                                           */}
       {/* ======================================================== */}
-      <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 print:p-0 print:max-w-none">
-        {/* The White Card Container */}
+      <main className="max-w-5xl mx-auto py-8 px-4 sm:px-6 print-container">
+        {/* Outer White Card Container */}
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8 print:border-none print:shadow-none print:rounded-none print:p-0">
           
-          {/* TOP CARD HEADER WITH ACTION BUTTONS */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-slate-100 print:hidden">
+          {/* ACTION BUTTON CLUSTER (TOP OF CARD) */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-slate-100 no-print">
             <div>
               <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 block mb-0.5">
                 DOCUMENT REFERENCE
@@ -243,13 +357,13 @@ export const ViewQuotationPage: React.FC = () => {
               </h1>
             </div>
 
-            {/* ACTION BUTTON CLUSTER (MATCHING SCREENSHOT 1 EXACTLY) */}
             <div className="flex flex-wrap items-center gap-2">
               {/* PDF Button */}
               <button
                 type="button"
                 onClick={handlePrint}
                 className="px-4 py-2 bg-[#6c5ce7] hover:bg-[#5b4bc4] active:scale-98 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                title="Print or Save PDF"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -283,7 +397,7 @@ export const ViewQuotationPage: React.FC = () => {
                 Tpl 2
               </button>
 
-              {/* Copy Client Link Button */}
+              {/* Copy Share Link */}
               <button
                 type="button"
                 onClick={handleCopyLink}
@@ -296,7 +410,7 @@ export const ViewQuotationPage: React.FC = () => {
                 <span>Copy Link</span>
               </button>
 
-              {/* Back Button */}
+              {/* Back to List */}
               <button
                 type="button"
                 onClick={() => navigate('/quotations')}
@@ -310,478 +424,537 @@ export const ViewQuotationPage: React.FC = () => {
             </div>
           </div>
 
-          {/* ======================================================== */}
-          {/* TEMPLATE 1: EXACT MATCH TO USER'S SCREENSHOT 1 & 2       */}
-          {/* ======================================================== */}
+          {/* ========================================================================= */}
+          {/* TEMPLATE 1: EXACT 1:1 REPLICA OF Prince_Modi_DIGI-Q-2026-0055.pdf         */}
+          {/* ========================================================================= */}
           {activeTemplate === 'tpl1' && (
-            <div className="space-y-8 animate-fadeIn">
-              {/* METADATA PILL BAR (EXACT MATCH SCREENSHOT 1) */}
-              <div className="bg-[#f8fafc] border border-slate-100 rounded-2xl p-5 grid grid-cols-2 sm:grid-cols-5 gap-4 items-center text-xs">
+            <div className="space-y-6 text-[11px] text-slate-800 leading-relaxed font-sans">
+              
+              {/* TOP HEADER: LOGO (LEFT) & "Quotation" TITLE (RIGHT) */}
+              <div className="flex justify-between items-start pb-4 border-b border-slate-200">
                 <div>
-                  <span className="text-[11px] text-slate-400 font-medium block">Client</span>
-                  <strong className="text-sm font-bold text-slate-900 block mt-0.5">
-                    {quote.client_name}
-                  </strong>
+                  <img
+                    src={logoUrl}
+                    alt={companyName}
+                    className="h-16 w-auto object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/logo.png';
+                    }}
+                  />
                 </div>
-
-                <div>
-                  <span className="text-[11px] text-slate-400 font-medium block">Issued</span>
-                  <span className="text-xs font-semibold text-slate-800 block mt-0.5">
-                    {issueDateFormatted}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[11px] text-slate-400 font-medium block">Valid Till</span>
-                  <span className="text-xs font-semibold text-slate-800 block mt-0.5">
-                    {validTillFormatted}
-                  </span>
-                </div>
-
-                <div>
-                  <span className="text-[11px] text-slate-400 font-medium block">Status</span>
-                  <div className="mt-0.5">
-                    <span className="inline-block px-3 py-0.5 text-[11px] font-bold rounded-full bg-[#dcfce7] text-[#15803d]">
-                      {quote.status.charAt(0).toUpperCase() + quote.status.slice(1)}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-[11px] text-slate-400 font-medium block">Place of Supply</span>
-                  <span className="text-xs font-semibold text-slate-800 block mt-0.5">
-                    {quote.place_of_supply || 'Rajasthan'}
-                  </span>
+                <div className="text-right">
+                  <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+                    Quotation
+                  </h1>
                 </div>
               </div>
 
-              {/* SCOPE OF WORK (EXACT MATCH SCREENSHOT 1) */}
-              <div className="space-y-3">
-                <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
-                  Scope of Work
-                </h3>
+              {/* 3-COLUMN METADATA GRID (QUOTATION NO / QUOTATION FROM / QUOTATION FOR) */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pb-4 border-b border-slate-200 text-xs">
+                
+                {/* Column 1: Document Details (Left 4 cols) */}
+                <div className="md:col-span-4 space-y-1">
+                  <div>
+                    <span className="text-[10px] text-slate-500 block uppercase font-medium">Quotation No</span>
+                    <strong className="font-mono text-xs text-slate-900">{quote.quote_number}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 block uppercase font-medium">Quotation Date</span>
+                    <span className="text-slate-800">{formattedQuoteDate}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 block uppercase font-medium">Valid Till Date</span>
+                    <span className="text-slate-800">{formattedValidUntil}</span>
+                  </div>
+                  <div className="pt-1 text-slate-700">
+                    <div>Country of Supply: <strong>India</strong></div>
+                    <div>Place of Supply: <strong>{quote.place_of_supply || 'Rajasthan'}</strong></div>
+                  </div>
+                </div>
 
-                <div className="overflow-x-auto border border-slate-100 rounded-xl">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead className="bg-[#f8fafc] text-slate-600 font-bold border-b border-slate-100">
-                      <tr>
-                        <th className="py-3 px-4 w-1/4">Section Title</th>
-                        <th className="py-3 px-4 w-1/2">Services Description</th>
-                        <th className="py-3 px-4 w-1/4">Strategic Goals</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {sectionsToRender.map((sec, idx) => (
+                {/* Column 2: Quotation From (Middle 5 cols) */}
+                <div className="md:col-span-5 space-y-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Quotation From
+                  </div>
+                  <div className="font-bold text-slate-900 text-xs">{companyName}</div>
+                  <p className="text-slate-600 leading-tight">
+                    {addressLine1}
+                    <br />
+                    {addressLine2}
+                  </p>
+                  <div className="pt-1 space-y-0.5 text-slate-700">
+                    <div>GSTIN: &nbsp;<strong className="font-mono font-medium">{gstin}</strong></div>
+                    <div>PAN: &nbsp;<strong className="font-mono font-medium">{pan}</strong></div>
+                    <div>Email: &nbsp;<span className="text-slate-800">{email}</span></div>
+                    <div>Phone: &nbsp;<span className="text-slate-800">{phone}</span></div>
+                  </div>
+                </div>
+
+                {/* Column 3: Quotation For (Right 3 cols) */}
+                <div className="md:col-span-3 space-y-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Quotation For
+                  </div>
+                  <div className="font-bold text-slate-900 text-sm">{quote.client_name}</div>
+                  {quote.client_address && (
+                    <p className="text-slate-600 leading-tight">{quote.client_address}</p>
+                  )}
+                  {quote.client_gstin && (
+                    <div className="text-slate-700">GSTIN: &nbsp;<strong className="font-mono">{quote.client_gstin}</strong></div>
+                  )}
+                  {quote.client_phone && (
+                    <div className="text-slate-700">Phone: &nbsp;{quote.client_phone}</div>
+                  )}
+                  {quote.client_email && (
+                    <div className="text-slate-700">Email: &nbsp;{quote.client_email}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* LINE ITEMS / SCOPE TABLE (WITH SCOPE LIST EMBEDDED INSIDE ITEM COLUMN) */}
+              <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-[#f8fafc] text-slate-700 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="py-2.5 px-3">Item</th>
+                      <th className="py-2.5 px-2 text-center w-20">HSN/SAC</th>
+                      <th className="py-2.5 px-2 text-center w-20">GST Rate</th>
+                      <th className="py-2.5 px-2 text-center w-16">Quantity</th>
+                      <th className="py-2.5 px-3 text-right w-24">Rate</th>
+                      <th className="py-2.5 px-3 text-right w-24">Amount</th>
+                      <th className="py-2.5 px-3 text-right w-24">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {sectionsToRender.map((sec, idx) => {
+                      // Corresponding pricing row if available
+                      const itemMatch = quote.items && quote.items[idx];
+                      const rate = itemMatch ? Number(itemMatch.rate) : Number(quote.subtotal || 25000) / (sectionsToRender.length || 1);
+                      const qty = itemMatch ? Number(itemMatch.qty || 1) : 1;
+                      const lineAmount = rate * qty;
+
+                      return (
                         <tr key={idx} className="align-top hover:bg-slate-50/50">
-                          {/* Column 1: Section Title */}
-                          <td className="py-4 px-4 font-bold text-slate-900">
-                            {sec.title}
-                          </td>
-
-                          {/* Column 2: Services Description */}
-                          <td className="py-4 px-4 text-slate-700 leading-relaxed">
-                            <div className="space-y-1">
+                          {/* Column 1: Item Title + Strategic Goal + Numbered Deliverables */}
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-slate-900 text-xs">
+                              {idx + 1}. &nbsp;{sec.title}
+                            </div>
+                            {sec.goal && (
+                              <div className="text-[11px] text-slate-500 italic mt-0.5 mb-1.5">
+                                {sec.goal}
+                              </div>
+                            )}
+                            <div className="text-[11px] text-slate-600 space-y-0.5 pl-2 leading-relaxed">
                               {sec.content.split('\n').filter((l) => l.trim()).map((line, lIdx) => (
-                                <div key={lIdx} className="text-xs text-slate-700">
-                                  {line}
-                                </div>
+                                <div key={lIdx}>{line}</div>
                               ))}
                             </div>
                           </td>
 
-                          {/* Column 3: Strategic Goals */}
-                          <td className="py-4 px-4 text-slate-600 font-medium leading-relaxed">
-                            {sec.goal || 'Convert visitors into Direct Booking & Growth'}
+                          {/* Column 2: HSN/SAC */}
+                          <td className="py-3 px-2 text-center font-mono text-slate-400">
+                            {itemMatch?.hsn || '—'}
+                          </td>
+
+                          {/* Column 3: GST Rate */}
+                          <td className="py-3 px-2 text-center font-mono text-slate-500">
+                            {quote.gst_type === 'none' ? '0%' : `${quote.gst_rate || 18}%`}
+                          </td>
+
+                          {/* Column 4: Quantity */}
+                          <td className="py-3 px-2 text-center font-mono font-medium">
+                            {qty}
+                          </td>
+
+                          {/* Column 5: Rate */}
+                          <td className="py-3 px-3 text-right font-mono">
+                            ₹{rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+
+                          {/* Column 6: Amount */}
+                          <td className="py-3 px-3 text-right font-mono">
+                            ₹{lineAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+
+                          {/* Column 7: Total */}
+                          <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
+                            ₹{lineAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* AMOUNTS & TOTAL SUMMARY */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 py-3 border-b border-slate-200 items-start text-xs">
+                {/* Left: Amount in words */}
+                <div className="sm:col-span-7 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    AMOUNT CHARGEABLE (IN WORDS)
+                  </span>
+                  <div className="font-bold text-slate-900 text-xs">
+                    {amountInWords}
+                  </div>
+                  <div className="text-slate-500 text-[11px] pt-1">
+                    Company's PAN: <strong>{pan}</strong>
+                  </div>
+                </div>
+
+                {/* Right: Amount & Total */}
+                <div className="sm:col-span-5 space-y-2 text-xs">
+                  <div className="flex justify-between text-slate-700">
+                    <span>Amount</span>
+                    <span className="font-mono font-semibold">
+                      ₹{Number(quote.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-bold text-slate-900 pt-2 border-t border-slate-300 text-sm border-b-2 border-slate-900 pb-1">
+                    <span>Total (INR)</span>
+                    <span className="font-mono">
+                      ₹{Number(quote.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* FINANCIAL BREAKDOWN (EXACT MATCH SCREENSHOT 2) */}
-              <div className="space-y-3 pt-4 border-t border-slate-100">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
-                  {/* Left Side: Payment terms & notes */}
-                  <div className="w-full sm:max-w-md space-y-3 text-xs">
-                    {(quote.payment_due_date || quote.payment_method) && (
-                      <div className="bg-[#f8fafc] p-4 rounded-xl border border-slate-100 space-y-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                          Payment Particulars
-                        </span>
-                        {quote.payment_due_date && (
-                          <div className="text-slate-700">
-                            <strong>Payment Due:</strong> {quote.payment_due_date}
-                          </div>
-                        )}
-                        {quote.payment_method && (
-                          <div className="text-slate-700">
-                            <strong>Payment Method:</strong> {quote.payment_method}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {quote.notes && (
-                      <div className="text-xs text-slate-500 italic bg-white p-3 rounded-xl border border-slate-100">
-                        &ldquo;{quote.notes}&rdquo;
-                      </div>
-                    )}
+              {/* TERMS & CONDITIONS AND BANK DETAILS (2 COLUMNS) */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-2 text-xs">
+                {/* Left: Terms and Conditions */}
+                <div className="md:col-span-7 space-y-2">
+                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wide">
+                    Terms and Conditions
+                  </h4>
+                  <div className="space-y-1 text-slate-600 text-[11px] leading-relaxed">
+                    <div>1. Payment Terms: {paymentMethod}</div>
+                    <div>2. Validity: This quotation is valid for until {formattedValidUntil}.</div>
+                    <div>3. Implementation Timeline: Estimated setup within 14 working days from advance payment.</div>
+                    <div>4. GST as applicable is included in the Grand Total above.</div>
                   </div>
+                  <p className="text-[11px] text-slate-700 pt-1 font-medium leading-relaxed">
+                    {notesText}
+                  </p>
+                </div>
 
-                  {/* Right Side: Financial Breakdown Box */}
-                  <div className="w-full sm:w-96 space-y-3">
-                    <h3 className="text-base font-extrabold text-slate-900 tracking-tight sm:text-right">
-                      Financial Breakdown
-                    </h3>
-
-                    <div className="border border-slate-100 rounded-xl overflow-hidden shadow-2xs">
-                      {/* Table of items */}
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-[#f8fafc] text-slate-600 font-bold border-b border-slate-100">
-                          <tr>
-                            <th className="py-2.5 px-4">Service Description</th>
-                            <th className="py-2.5 px-4 text-right">Amount (INR)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-slate-800">
-                          {quote.items && quote.items.length > 0 ? (
-                            quote.items.map((it, idx) => (
-                              <tr key={idx} className="hover:bg-slate-50/50">
-                                <td className="py-2.5 px-4 font-medium text-slate-900">
-                                  {it.name}
-                                </td>
-                                <td className="py-2.5 px-4 text-right font-mono font-semibold">
-                                  ₹ {Number(it.rate * (it.qty || 1)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td className="py-2.5 px-4 font-medium text-slate-900">
-                                {quote.title || 'Service Delivery'}
-                              </td>
-                              <td className="py-2.5 px-4 text-right font-mono font-semibold">
-                                ₹ {Number(quote.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                          )}
-
-                          {/* Subtotal */}
-                          <tr className="bg-slate-50/60 font-bold text-slate-700">
-                            <td className="py-2 px-4">Subtotal</td>
-                            <td className="py-2 px-4 text-right font-mono">
-                              ₹ {Number(quote.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-
-                          {/* Discount if any */}
-                          {Number(quote.discount_amount || 0) > 0 && (
-                            <tr className="text-emerald-700 font-medium">
-                              <td className="py-1.5 px-4">Discount</td>
-                              <td className="py-1.5 px-4 text-right font-mono">
-                                - ₹ {Number(quote.discount_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                          )}
-
-                          {/* Tax Breakdown */}
-                          {!isGstExempt && (
-                            <>
-                              {isIgst ? (
-                                <tr className="text-slate-600">
-                                  <td className="py-1.5 px-4">IGST ({gstRate}%)</td>
-                                  <td className="py-1.5 px-4 text-right font-mono">
-                                    + ₹ {Number(quote.tax_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                  </td>
-                                </tr>
-                              ) : (
-                                <>
-                                  <tr className="text-slate-600">
-                                    <td className="py-1.5 px-4">CGST ({(gstRate / 2).toFixed(1)}%)</td>
-                                    <td className="py-1.5 px-4 text-right font-mono">
-                                      + ₹ {(Number(quote.tax_amount || 0) / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                    </td>
-                                  </tr>
-                                  <tr className="text-slate-600">
-                                    <td className="py-1.5 px-4">SGST ({(gstRate / 2).toFixed(1)}%)</td>
-                                    <td className="py-1.5 px-4 text-right font-mono">
-                                      + ₹ {(Number(quote.tax_amount || 0) / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                    </td>
-                                  </tr>
-                                </>
-                              )}
-                            </>
-                          )}
-                        </tbody>
-                      </table>
-
-                      {/* DARK NAVY GRAND TOTAL BAR (EXACT REPLICA SCREENSHOT 2) */}
-                      <div className="bg-[#0b1329] text-white p-3.5 px-4 flex justify-between items-center font-bold text-xs">
-                        <span className="tracking-wider uppercase font-black">GRAND TOTAL</span>
-                        <span className="text-sm font-mono font-extrabold tracking-wide">
-                          ₹ {Number(quote.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
+                {/* Right: Bank Details */}
+                <div className="md:col-span-5 space-y-2 bg-[#f8fafc] p-4 rounded-xl border border-slate-200">
+                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wide">
+                    Bank Details
+                  </h4>
+                  <div className="space-y-1 text-slate-700 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Account Name:</span>
+                      <strong className="text-right">{accountHolderName}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Account Number:</span>
+                      <strong className="font-mono text-right">{accountNumber}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">IFSC:</span>
+                      <strong className="font-mono text-right">{ifscCode}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Account Type:</span>
+                      <span className="text-right">{accountType}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Bank:</span>
+                      <strong className="text-right">{bankName}</strong>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* TERMS & SIGNATURE FOOTER */}
-              {quote.terms && (
-                <div className="pt-6 border-t border-slate-100">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-                    Terms &amp; Conditions
-                  </span>
-                  <div className="text-xs text-slate-500 whitespace-pre-line leading-relaxed bg-[#f8fafc] p-4 rounded-xl border border-slate-100">
-                    {quote.terms}
-                  </div>
+              {/* FOOTER */}
+              <div className="pt-6 border-t border-slate-200 text-center text-[10px] text-slate-500 space-y-2">
+                <div>
+                  For any enquiry, reach out via email at <strong>{email}</strong>, call on <strong>{phone}</strong>
                 </div>
-              )}
+                <div className="border-t border-slate-100 pt-2 flex flex-wrap justify-between items-center text-slate-400">
+                  <span>Page 1 of 1</span>
+                  <span>Quotation No: <strong>{quote.quote_number}</strong></span>
+                  <span>Quotation Date: <strong>{formattedFooterDate}</strong></span>
+                  <span>Quotation For: <strong>{quote.client_name}</strong></span>
+                </div>
+                <div className="text-slate-400 italic">
+                  This is a system generated document, no signature is required.
+                </div>
+              </div>
+
             </div>
           )}
 
-          {/* ======================================================== */}
-          {/* TEMPLATE 2: EXECUTIVE CORPORATE PROPOSAL & LETTERHEAD     */}
-          {/* ======================================================== */}
+          {/* ========================================================================= */}
+          {/* TEMPLATE 2: EXACT 1:1 REPLICA OF Prince_Modi_DIGI-Q-2026-0055 (1).pdf     */}
+          {/* ========================================================================= */}
           {activeTemplate === 'tpl2' && (
-            <div className="space-y-8 animate-fadeIn">
-              {/* Corporate Letterhead Banner */}
-              <div className="p-6 sm:p-8 rounded-2xl bg-linear-to-r from-[#003884] via-[#084b9e] to-[#002860] text-white shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+            <div className="space-y-6 text-[11px] text-slate-800 leading-relaxed font-sans">
+              
+              {/* TOP HEADER: LOGO (LEFT) & "QUOTATION" + SUBTITLE (RIGHT) */}
+              <div className="flex justify-between items-start pb-4 border-b border-slate-200">
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-8 h-8 rounded-lg bg-white text-[#003884] font-black flex items-center justify-center text-sm shadow-xs">
-                      D
+                  <img
+                    src={logoUrl}
+                    alt={companyName}
+                    className="h-16 w-auto object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/logo.png';
+                    }}
+                  />
+                </div>
+                <div className="text-right">
+                  <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">
+                    QUOTATION
+                  </h1>
+                  <div className="text-xs text-[#2563eb] font-semibold mt-0.5">
+                    Digiink Business Proposal &amp; Commercials
+                  </div>
+                </div>
+              </div>
+
+              {/* COMPANY DETAILS (LEFT) & QUOTATION PARTICULARS (RIGHT) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-4 border-b border-slate-200 text-xs">
+                {/* Left: Company Particulars */}
+                <div className="space-y-1">
+                  <div className="font-extrabold text-slate-900 text-sm tracking-wide uppercase">
+                    {companyName}
+                  </div>
+                  <p className="text-slate-600 leading-tight">
+                    {addressLine1}
+                    <br />
+                    {addressLine2}
+                  </p>
+                  <div className="pt-1 space-y-0.5 text-slate-700">
+                    <div>GSTIN: &nbsp;<strong className="font-mono">{gstin}</strong></div>
+                    <div>PAN: &nbsp;<strong className="font-mono">{pan}</strong></div>
+                    <div>Email: &nbsp;<span className="text-slate-800">{email}</span></div>
+                    <div>Phone: &nbsp;<span className="text-slate-800">{phone}</span></div>
+                  </div>
+                </div>
+
+                {/* Right: Quotation Details Table */}
+                <div className="space-y-1 font-mono text-xs">
+                  <div className="flex justify-between border-b border-slate-100 py-0.5">
+                    <span className="font-sans text-slate-500 font-medium">Quotation No.</span>
+                    <strong className="text-slate-900">: {quote.quote_number}</strong>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 py-0.5">
+                    <span className="font-sans text-slate-500 font-medium">Quotation Date</span>
+                    <span className="font-sans text-slate-800">: {formattedQuoteDate}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 py-0.5">
+                    <span className="font-sans text-slate-500 font-medium">Valid Till</span>
+                    <span className="font-sans text-slate-800">: {formattedValidUntil}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 py-0.5">
+                    <span className="font-sans text-slate-500 font-medium">Country of Supply</span>
+                    <span className="font-sans text-slate-800">: India</span>
+                  </div>
+                  <div className="flex justify-between py-0.5">
+                    <span className="font-sans text-slate-500 font-medium">Place of Supply</span>
+                    <span className="font-sans text-slate-800">: {quote.place_of_supply || 'Rajasthan'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CLIENT DETAILS BANNER */}
+              <div className="space-y-1">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 bg-slate-50 p-1.5 px-3 rounded-lg border border-slate-100">
+                  QUOTATION FOR (CLIENT DETAILS)
+                </div>
+                <div className="text-sm font-bold text-slate-900 px-3 pt-1">
+                  {quote.client_name}
+                </div>
+                {quote.client_address && (
+                  <div className="text-xs text-slate-600 px-3">{quote.client_address}</div>
+                )}
+              </div>
+
+              {/* COMMERCIALS TABLE (COMPACT SERVICE / ITEM TABLE) */}
+              <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-[#2563eb] text-white font-bold uppercase text-[11px] tracking-wider">
+                    <tr>
+                      <th className="py-2.5 px-3 w-10 text-center">#</th>
+                      <th className="py-2.5 px-4">Service / Item Description</th>
+                      <th className="py-2.5 px-3 text-center w-28">HSN/SAC</th>
+                      <th className="py-2.5 px-4 text-right w-36">Rate (₹)</th>
+                      <th className="py-2.5 px-4 text-right w-36">Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {quote.items && quote.items.length > 0 ? (
+                      quote.items.map((it, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/50">
+                          <td className="py-3 px-3 text-center font-mono text-slate-400">{idx + 1}</td>
+                          <td className="py-3 px-4 font-bold text-slate-900">
+                            {it.name}
+                            {it.description && (
+                              <div className="text-[11px] text-slate-500 font-normal mt-0.5">{it.description}</div>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-center font-mono text-slate-500">{it.hsn || '998314'}</td>
+                          <td className="py-3 px-4 text-right font-mono font-medium">
+                            {Number(it.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                            {Number(it.rate * (it.qty || 1)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="py-3 px-3 text-center font-mono text-slate-400">1</td>
+                        <td className="py-3 px-4 font-bold text-slate-900">{quote.title || 'Digital Solution Development'}</td>
+                        <td className="py-3 px-3 text-center font-mono text-slate-500">998314</td>
+                        <td className="py-3 px-4 text-right font-mono font-medium">
+                          {Number(quote.subtotal || 25000).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
+                          {Number(quote.subtotal || 25000).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* AMOUNTS & TOTAL SUMMARY */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 py-2 border-b border-slate-200 items-start text-xs">
+                {/* Left: Words */}
+                <div className="sm:col-span-7 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    AMOUNT CHARGEABLE (IN WORDS):
+                  </span>
+                  <div className="font-bold text-slate-900 text-xs">
+                    {amountInWords}
+                  </div>
+                  <div className="text-slate-500 text-[11px] pt-1">
+                    Company's PAN: <strong>{pan}</strong>
+                  </div>
+                </div>
+
+                {/* Right: Subtotal, Taxable, Grand Total */}
+                <div className="sm:col-span-5 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Subtotal</span>
+                    <span className="font-mono">
+                      ₹{Number(quote.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </span>
-                    <h2 className="text-2xl font-black tracking-tight text-white">
-                      DigiInk Solutions
-                    </h2>
                   </div>
-                  <p className="text-xs text-blue-100 max-w-md font-normal leading-relaxed">
-                    318 3rd and 4th, Metro Station New Aatish Market, Devi Nagar, Mansarovar, Jaipur, Rajasthan 302020
-                  </p>
-                  <p className="text-[11px] text-blue-200 mt-1">
-                    GSTIN: <strong>08AGHPP4568R1ZD</strong> • Phone: +91 9024154995 • Web: www.digiinksolutions.com
-                  </p>
-                </div>
-
-                <div className="sm:text-right bg-white/10 backdrop-blur p-4 rounded-xl border border-white/20 w-full sm:w-auto">
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-200 block">
-                    PROJECT PROPOSAL
-                  </span>
-                  <div className="text-xl font-black font-mono mt-0.5">{quote.quote_number}</div>
-                  <div className="text-xs text-blue-100 mt-1">
-                    Date: <strong>{issueDateFormatted}</strong>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Taxable Amount</span>
+                    <span className="font-mono">
+                      ₹{Number(quote.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
-                  <div className="text-xs text-blue-100">
-                    Valid Till: <strong>{validTillFormatted}</strong>
+                  <div className="flex justify-between font-black text-slate-900 pt-2 border-t border-slate-300 text-sm">
+                    <span>Grand Total (INR)</span>
+                    <span className="font-mono">
+                      ₹{Number(quote.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Two Column Info Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Prepared For Box */}
-                <div className="p-5 rounded-2xl bg-[#f8fafc] border border-slate-200/80 space-y-1.5">
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block mb-1">
-                    PROPOSAL PREPARED FOR
-                  </span>
-                  <h3 className="text-base font-bold text-slate-900">{quote.client_name}</h3>
-                  {quote.client_address && (
-                    <p className="text-xs text-slate-600">{quote.client_address}</p>
-                  )}
-                  {quote.place_of_supply && (
-                    <p className="text-xs text-slate-600">
-                      <strong>Place of Supply:</strong> {quote.place_of_supply}
-                    </p>
-                  )}
-                  {quote.client_gstin && (
-                    <p className="text-xs text-slate-600">
-                      <strong>Client GSTIN:</strong> {quote.client_gstin}
-                    </p>
-                  )}
-                  {quote.client_phone && (
-                    <p className="text-xs text-slate-600">
-                      <strong>Phone:</strong> {quote.client_phone}
-                    </p>
-                  )}
-                </div>
+              {/* SCOPE OF WORK & PROJECT DELIVERABLES (DEDICATED SECTION BELOW COMMERCIALS) */}
+              <div className="space-y-4 pt-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 pb-1 border-b border-slate-200">
+                  SCOPE OF WORK &amp; PROJECT DELIVERABLES
+                </h3>
 
-                {/* Proposal Overview Box */}
-                <div className="p-5 rounded-2xl bg-[#f8fafc] border border-slate-200/80 space-y-1.5">
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block mb-1">
-                    PROPOSAL OVERVIEW
-                  </span>
-                  <h4 className="text-sm font-bold text-[#003884]">{quote.title}</h4>
-                  <p className="text-xs text-slate-600">
-                    <strong>Prepared By:</strong> {quote.prepared_by || 'DigiInk Solutions'}
-                  </p>
-                  <p className="text-xs text-slate-600">
-                    <strong>Payment Method:</strong> {quote.payment_method || 'Bank Transfer / UPI'}
-                  </p>
-                  <p className="text-xs text-slate-600">
-                    <strong>Payment Due Date:</strong> {quote.payment_due_date || 'Within 15 days of invoice'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Scope & Deliverables Cards */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-4 bg-[#003884] rounded-full inline-block"></span>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                    Scope of Work &amp; Deliverables
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
                   {sectionsToRender.map((sec, idx) => (
-                    <div key={idx} className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
-                      <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                        <span className="w-6 h-6 rounded-lg bg-blue-100 text-[#003884] font-bold text-xs flex items-center justify-center">
-                          {idx + 1}
-                        </span>
-                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                          {sec.title}
-                        </h4>
+                    <div key={idx} className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-2">
+                      <div className="font-bold text-xs text-slate-900 uppercase">
+                        SECTION {idx + 1} &nbsp;{sec.title}
                       </div>
-                      <div className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">
-                        {sec.content}
+                      {sec.goal && (
+                        <div className="text-[11px] text-[#2563eb] font-semibold">
+                          Objective: {sec.goal}
+                        </div>
+                      )}
+                      <div className="text-[11px] text-slate-700 space-y-1 pl-2">
+                        {sec.content.split('\n').filter((l) => l.trim()).map((line, lIdx) => (
+                          <div key={lIdx} className="flex items-start gap-2">
+                            <span className="text-slate-400 font-bold">•</span>
+                            <span>{line}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Itemized Pricing Matrix */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-4 bg-[#003884] rounded-full inline-block"></span>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                    Costing &amp; GST Matrix
-                  </h3>
+              {/* TERMS & CONDITIONS AND BANK DETAILS */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t border-slate-200 text-xs">
+                {/* Left: Terms & Conditions */}
+                <div className="md:col-span-7 space-y-2">
+                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wide">
+                    TERMS &amp; CONDITIONS
+                  </h4>
+                  <div className="space-y-1 text-slate-600 text-[11px] leading-relaxed">
+                    <div>1. Payment Terms: {paymentMethod}</div>
+                    <div>2. Validity: This quotation is valid until {formattedValidUntil}</div>
+                    <div>3. Implementation Timeline: Estimated setup within 14 working days from advance payment.</div>
+                    <div>4. GST as applicable is included in the Grand Total above.</div>
+                  </div>
+                  <p className="text-[11px] text-slate-700 pt-1 font-medium leading-relaxed">
+                    {notesText}
+                  </p>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-2xs">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead className="bg-[#0b1329] text-white font-bold uppercase text-[11px] tracking-wider">
-                      <tr>
-                        <th className="py-3 px-4 w-12 text-center">#</th>
-                        <th className="py-3 px-4">Deliverable / Service</th>
-                        <th className="py-3 px-4 text-center w-24">Qty</th>
-                        <th className="py-3 px-4 text-right w-36">Rate (₹)</th>
-                        <th className="py-3 px-4 text-right w-40">Amount (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {quote.items && quote.items.length > 0 ? (
-                        quote.items.map((it, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/50">
-                            <td className="py-3 px-4 text-center font-mono text-slate-400">{idx + 1}</td>
-                            <td className="py-3 px-4">
-                              <div className="font-bold text-slate-900">{it.name}</div>
-                              {it.description && (
-                                <div className="text-[11px] text-slate-500 mt-0.5">{it.description}</div>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center font-mono font-medium">{it.qty}</td>
-                            <td className="py-3 px-4 text-right font-mono">
-                              ₹ {Number(it.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </td>
-                            <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">
-                              ₹ {Number(it.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="py-4 text-center text-slate-400">
-                            No items specified
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Financial Summary Box */}
-                <div className="flex justify-end pt-2">
-                  <div className="w-full sm:w-80 bg-[#f8fafc] p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
-                    <div className="flex justify-between text-slate-600">
-                      <span>Subtotal (Taxable):</span>
-                      <span className="font-mono font-semibold text-slate-800">
-                        ₹ {Number(quote.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </span>
+                {/* Right: Bank Details */}
+                <div className="md:col-span-5 space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wide">
+                    BANK DETAILS
+                  </h4>
+                  <div className="space-y-1 text-slate-700 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Account Name:</span>
+                      <strong className="text-right">{accountHolderName}</strong>
                     </div>
-
-                    {Number(quote.discount_amount || 0) > 0 && (
-                      <div className="flex justify-between text-emerald-700">
-                        <span>Discount:</span>
-                        <span className="font-mono font-semibold">
-                          - ₹ {Number(quote.discount_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                    )}
-
-                    {!isGstExempt && (
-                      <>
-                        {isIgst ? (
-                          <div className="flex justify-between text-slate-600">
-                            <span>IGST ({gstRate}%):</span>
-                            <span className="font-mono font-semibold text-slate-800">
-                              + ₹ {Number(quote.tax_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex justify-between text-slate-600">
-                              <span>CGST ({(gstRate / 2).toFixed(1)}%):</span>
-                              <span className="font-mono font-semibold text-slate-800">
-                                + ₹ {(Number(quote.tax_amount || 0) / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                            <div className="flex justify-between text-slate-600">
-                              <span>SGST ({(gstRate / 2).toFixed(1)}%):</span>
-                              <span className="font-mono font-semibold text-slate-800">
-                                + ₹ {(Number(quote.tax_amount || 0) / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                          </>
-                        )}
-                      </>
-                    )}
-
-                    <div className="pt-2 border-t border-slate-300 flex justify-between items-center text-sm font-black text-slate-900">
-                      <span>Grand Total:</span>
-                      <span className="text-base text-[#003884] font-mono">
-                        ₹ {Number(quote.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                      </span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Account Number:</span>
+                      <strong className="font-mono text-right">{accountNumber}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">IFSC:</span>
+                      <strong className="font-mono text-right">{ifscCode}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Account Type:</span>
+                      <span className="text-right">{accountType}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Bank:</span>
+                      <strong className="text-right">{bankName}</strong>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Terms & Formal Signatory Box */}
-              <div className="pt-6 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-8 text-xs">
-                <div className="space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                    Terms of Engagement
-                  </span>
-                  <div className="text-[11px] text-slate-600 whitespace-pre-line leading-relaxed bg-[#f8fafc] p-4 rounded-xl border border-slate-200">
-                    {quote.terms || '1. Valid for 15 days.\n2. Payment: 50% advance, 50% on project delivery.\n3. Taxes applicable as per GST rules.'}
-                  </div>
+              {/* FOOTER */}
+              <div className="pt-6 border-t border-slate-200 text-center text-[10px] text-slate-500 space-y-2">
+                <div>
+                  For any enquiry, reach out via email at <strong>{email}</strong>, call on <strong>{phone}</strong>
                 </div>
-
-                <div className="flex flex-col justify-end items-end text-right space-y-1">
-                  <div className="w-48 h-16 border-b border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs italic">
-                    Authorized Signatory
-                  </div>
-                  <div className="text-xs font-bold text-slate-900 pt-1">DigiInk Solutions</div>
-                  <div className="text-[11px] text-slate-500">Official Executive Approval</div>
+                <div className="border-t border-slate-100 pt-2 flex flex-wrap justify-between items-center text-slate-400">
+                  <span>Page 1 of 1</span>
+                  <span>Quotation No: <strong>{quote.quote_number}</strong></span>
+                  <span>Quotation Date: <strong>{formattedFooterDate}</strong></span>
+                  <span>Quotation For: <strong>{quote.client_name}</strong></span>
+                </div>
+                <div className="text-slate-400 italic">
+                  This is a system generated document, no signature is required.
                 </div>
               </div>
+
             </div>
           )}
 
