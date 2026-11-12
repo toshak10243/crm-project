@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -95,8 +94,6 @@ const QuotationsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage] = useState(1);
 
-  // Active quotation for print / preview modal
-  const [viewingQuotation, setViewingQuotation] = useState<Quotation | null>(null);
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
 
   // ==========================================
@@ -434,15 +431,16 @@ const QuotationsPage: React.FC = () => {
             <p><strong>Total Value:</strong> ₹${Number(saved?.total_amount).toLocaleString('en-IN')}</p>
           </div>
         `,
-        confirmButtonText: 'View / Share Quotation',
+        confirmButtonText: 'View Quotation Page',
         confirmButtonColor: '#003884',
         showCancelButton: true,
         cancelButtonText: 'Back to List',
       }).then((result) => {
-        if (result.isConfirmed) {
-          setViewingQuotation(saved);
+        if (result.isConfirmed && saved?.id) {
+          navigate(`/quotations/view/${saved.id}`);
+        } else {
+          setViewMode('list');
         }
-        setViewMode('list');
       });
     },
     onError: (err: any) => {
@@ -1301,11 +1299,11 @@ const QuotationsPage: React.FC = () => {
                           </td>
                           <td className="py-3 px-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">
-                              {/* View / Print */}
+                              {/* View Quotation Page */}
                               <button
                                 type="button"
-                                onClick={() => setViewingQuotation(q)}
-                                title="Print / View Quotation"
+                                onClick={() => navigate(`/quotations/view/${q.id}`)}
+                                title="View Quotation Page"
                                 className="p-1.5 text-slate-600 hover:text-[#003884] hover:bg-blue-50 rounded-lg transition cursor-pointer"
                               >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1392,199 +1390,6 @@ const QuotationsPage: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* ======================================================== */}
-        {/* MODAL: PRINTABLE HTML QUOTATION PREVIEW                  */}
-        {/* ======================================================== */}
-        {viewingQuotation &&
-          createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 overflow-y-auto">
-              <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] overflow-y-auto shadow-2xl p-6 sm:p-8 space-y-6">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 no-print">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-[#003884] text-sm">{viewingQuotation.quote_number}</span>
-                    {renderStatusBadge(viewingQuotation.status)}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyPublicLink(viewingQuotation)}
-                      className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
-                    >
-                      Copy Share Link
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => window.print()}
-                      className="px-3 py-1.5 text-xs font-semibold text-white bg-[#003884] rounded-lg cursor-pointer"
-                    >
-                      Print / Save PDF
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewingQuotation(null)}
-                      className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold cursor-pointer"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-
-                {/* Rendered Letterhead Document */}
-                <div className="border border-slate-200 rounded-2xl p-6 sm:p-8 space-y-6 bg-white text-slate-800">
-                  {/* Header */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-6 border-b border-slate-200">
-                    <div>
-                      <h2 className="text-2xl font-black text-[#003884]">DigiInk Solutions</h2>
-                      <p className="text-xs text-slate-500 mt-1 max-w-sm">
-                        318 3rd and 4th, Metro Station New Aatish Market, Devi Nagar, Mansarovar, Jaipur, Rajasthan 302020
-                      </p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        <strong>GSTIN:</strong> 08AGHPP4568R1ZD • <strong>Phone:</strong> +91 9024154995
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        <strong>Email:</strong> support@digiinksolutions.com • <strong>Web:</strong> www.digiinksolutions.com
-                      </p>
-                    </div>
-                    <div className="sm:text-right">
-                      <span className="text-2xl font-black uppercase text-slate-900 tracking-tight">QUOTATION</span>
-                      <div className="text-sm font-mono font-bold text-[#003884] mt-1">{viewingQuotation.quote_number}</div>
-                      <div className="text-xs text-slate-500 mt-1">
-                        Date: {new Date(viewingQuotation.quotation_date || viewingQuotation.created_at).toLocaleDateString('en-GB')}
-                      </div>
-                      {viewingQuotation.valid_until && (
-                        <div className="text-xs text-slate-600 mt-0.5">
-                          Valid Till: {new Date(viewingQuotation.valid_until).toLocaleDateString('en-GB')}
-                        </div>
-                      )}
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        Place of Supply: <strong>{viewingQuotation.place_of_supply || 'Rajasthan'}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bill To */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Proposal Prepared For:</div>
-                      <div className="text-sm font-bold text-slate-900 mt-1">{viewingQuotation.client_name}</div>
-                      {viewingQuotation.client_gstin && <div>GSTIN: <span className="font-mono font-semibold">{viewingQuotation.client_gstin}</span></div>}
-                      {viewingQuotation.client_address && <div>Address: {viewingQuotation.client_address}</div>}
-                      {viewingQuotation.client_phone && <div>Phone: {viewingQuotation.client_phone}</div>}
-                      {viewingQuotation.client_email && <div>Email: {viewingQuotation.client_email}</div>}
-                    </div>
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Proposal Specifications:</div>
-                      <div className="text-xs font-bold text-slate-900 mt-1">{viewingQuotation.title}</div>
-                      <div className="text-slate-500 mt-1">Prepared By: <strong>{viewingQuotation.prepared_by || 'DigiInk Solutions'}</strong></div>
-                      {viewingQuotation.payment_due_date && <div className="text-slate-500">Payment Due: {viewingQuotation.payment_due_date}</div>}
-                      {viewingQuotation.payment_method && <div className="text-slate-500">Method: {viewingQuotation.payment_method}</div>}
-                    </div>
-                  </div>
-
-                  {/* Scope of Work Sections (If Any) */}
-                  {viewingQuotation.sections && viewingQuotation.sections.length > 0 && (
-                    <div className="space-y-4 pt-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 border-b border-slate-200 pb-2">
-                        Scope of Work &amp; Project Deliverables
-                      </h4>
-                      {viewingQuotation.sections.map((sec, i) => (
-                        <div key={i} className="space-y-1.5">
-                          <h5 className="text-xs font-bold text-[#003884]">{sec.title}</h5>
-                          <p className="text-xs text-slate-600 whitespace-pre-line leading-relaxed">{sec.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Line Items Table */}
-                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead className="bg-[#0b1329] text-white font-bold">
-                        <tr>
-                          <th className="py-2.5 px-3">Service / Item Name</th>
-                          <th className="py-2.5 px-3 text-center">Qty</th>
-                          <th className="py-2.5 px-3 text-right">Rate (₹)</th>
-                          <th className="py-2.5 px-3 text-right">GST %</th>
-                          <th className="py-2.5 px-3 text-right">Amount (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {viewingQuotation.items?.map((item, idx) => (
-                          <tr key={idx}>
-                            <td className="py-2.5 px-3">
-                              <div className="font-bold text-slate-900">{item.name}</div>
-                              {item.description && <div className="text-[11px] text-slate-500">{item.description}</div>}
-                            </td>
-                            <td className="py-2.5 px-3 text-center font-mono">{item.qty}</td>
-                            <td className="py-2.5 px-3 text-right font-mono">₹{Number(item.rate).toLocaleString('en-IN')}</td>
-                            <td className="py-2.5 px-3 text-right font-mono">{item.tax_pct}%</td>
-                            <td className="py-2.5 px-3 text-right font-mono font-bold">₹{Number(item.amount).toLocaleString('en-IN')}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Summary & Bank Info */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
-                    <div className="space-y-2 text-xs text-slate-600">
-                      <div className="font-bold text-slate-800">DigiInk Solutions Bank &amp; UPI Details:</div>
-                      <div>Bank: <strong>HDFC Bank Ltd</strong></div>
-                      <div>A/C Name: <strong>DigiInk Solutions</strong></div>
-                      <div>A/C No: <strong className="font-mono">50200085942315</strong></div>
-                      <div>IFSC: <strong className="font-mono">HDFC0001864</strong></div>
-                      <div>UPI ID: <strong className="font-mono text-[#003884]">digiink@hdfcbank</strong></div>
-                    </div>
-
-                    <div className="space-y-2 text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                      <div className="flex justify-between">
-                        <span>Subtotal:</span>
-                        <span className="font-mono">₹{Number(viewingQuotation.subtotal).toLocaleString('en-IN')}</span>
-                      </div>
-                      {Number(viewingQuotation.discount_amount) > 0 && (
-                        <div className="flex justify-between text-emerald-700">
-                          <span>Discount:</span>
-                          <span className="font-mono">-₹{Number(viewingQuotation.discount_amount).toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span>GST Tax Amount:</span>
-                        <span className="font-mono">₹{Number(viewingQuotation.tax_amount).toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="pt-2 border-t border-slate-300 flex justify-between font-black text-sm text-slate-900">
-                        <span>Grand Total:</span>
-                        <span className="text-base text-[#003884] font-mono">
-                          ₹{Number(viewingQuotation.total_amount).toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Status Banner */}
-                  {viewingQuotation.status === 'accepted' && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-center">
-                      <div className="text-xs font-bold text-emerald-800">
-                        ✓ OFFICIALLY ACCEPTED BY {viewingQuotation.accepted_by_name?.toUpperCase() || viewingQuotation.client_name?.toUpperCase()}
-                      </div>
-                      <div className="text-[11px] text-emerald-700 mt-0.5">
-                        Accepted on: {new Date(viewingQuotation.accepted_at || viewingQuotation.created_at).toLocaleString('en-IN')}
-                        {viewingQuotation.accepted_notes && ` • Note: "${viewingQuotation.accepted_notes}"`}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Notes & Terms */}
-                  {viewingQuotation.notes && (
-                    <div className="text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-                      <strong>Notes:</strong> {viewingQuotation.notes}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>,
-            document.body
-          )}
       </div>
     </CrmLayout>
   );

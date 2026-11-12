@@ -38,6 +38,7 @@ import IvrPage from '../pages/finance/IvrPage';
 import WaDaddyPage from '../pages/finance/WaDaddyPage';
 import DigiMailPage from '../pages/digimail/DigiMail';
 import QuotationsPage from '../pages/finance/Quotations';
+import ViewQuotationPage from '../pages/finance/ViewQuotation';
 import InvoicesPage from '../pages/finance/Invoices';
 import PublicQuotationView from '../pages/finance/PublicQuotationView';
 import PublicInvoiceView from '../pages/finance/PublicInvoiceView';
@@ -288,6 +289,10 @@ export const router = createBrowserRouter([
   {
     path: '/quotations',
     element: <PrivateRoute><QuotationsPage /></PrivateRoute>,
+  },
+  {
+    path: '/quotations/view/:id',
+    element: <PrivateRoute><ViewQuotationPage /></PrivateRoute>,
   },
   {
     path: '/invoices',
