@@ -8,3 +8,4 @@ import { DigimailController } from './digimail.controller';
   exports: [DigimailService],
 })
 export class DigimailModule {}
+

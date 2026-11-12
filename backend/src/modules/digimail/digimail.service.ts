@@ -162,6 +162,8 @@ export class DigimailService {
         name: string;
         email: string;
         phone?: string;
+        city?: string;
+        company?: string;
       }>;
     }
   ) {
@@ -203,11 +205,32 @@ export class DigimailService {
         if (!r.email) continue;
         const trackingToken = crypto.randomBytes(24).toString('hex');
 
-        // Personalize Template Variables
+        // Personalize Template Variables Dynamically for this specific client
+        const clientName = r.name || 'Valued Client';
+        const clientEmail = r.email || '';
+        const clientPhone = r.phone || '';
+        const clientCity = r.city || '';
+        const clientCompany = r.company || '';
+
         let personalizedHtml = data.htmlContent
-          .replace(/\{\{\s*name\s*\}\}/gi, r.name || 'Valued Customer')
-          .replace(/\{\{\s*email\s*\}\}/gi, r.email)
-          .replace(/\{\{\s*phone\s*\}\}/gi, r.phone || '');
+          .replace(/\{\{\s*name\s*\}\}/gi, clientName)
+          .replace(/\{\{\s*client_name\s*\}\}/gi, clientName)
+          .replace(/\{\{\s*full_name\s*\}\}/gi, clientName)
+          .replace(/\{\{\s*email\s*\}\}/gi, clientEmail)
+          .replace(/\{\{\s*phone\s*\}\}/gi, clientPhone)
+          .replace(/\{\{\s*mobile\s*\}\}/gi, clientPhone)
+          .replace(/\{\{\s*city\s*\}\}/gi, clientCity)
+          .replace(/\{\{\s*company\s*\}\}/gi, clientCompany);
+
+        // Also personalize dynamic subject line if variables used
+        const personalizedSubject = data.subject
+          .replace(/\{\{\s*name\s*\}\}/gi, clientName)
+          .replace(/\{\{\s*client_name\s*\}\}/gi, clientName)
+          .replace(/\{\{\s*full_name\s*\}\}/gi, clientName)
+          .replace(/\{\{\s*email\s*\}\}/gi, clientEmail)
+          .replace(/\{\{\s*phone\s*\}\}/gi, clientPhone)
+          .replace(/\{\{\s*city\s*\}\}/gi, clientCity)
+          .replace(/\{\{\s*company\s*\}\}/gi, clientCompany);
 
         // Embed 1x1 Invisible Tracking Pixel for Read/Opened Detection
         const trackingPixel = `<img src="${backendBaseUrl}/api/digimail/track/${trackingToken}" width="1" height="1" style="display:none !important; visibility:hidden; opacity:0; width:0; height:0;" alt="" />`;
@@ -216,8 +239,8 @@ export class DigimailService {
         try {
           await transporter.sendMail({
             from: fromAddress,
-            to: `"${r.name}" <${r.email}>`,
-            subject: data.subject.replace(/\{\{\s*name\s*\}\}/gi, r.name || ''),
+            to: `"${clientName}" <${clientEmail}>`,
+            subject: personalizedSubject,
             html: personalizedHtml,
           });
 
@@ -226,16 +249,16 @@ export class DigimailService {
             `INSERT INTO digimail_logs 
               (campaign_id, lead_id, recipient_name, recipient_email, recipient_phone, subject, status, tracking_token, is_opened, sent_at)
              VALUES ($1, $2, $3, $4, $5, $6, 'sent', $7, false, NOW())`,
-            [campaign.id, r.leadId || null, r.name, r.email, r.phone || null, data.subject, trackingToken]
+            [campaign.id, r.leadId || null, clientName, clientEmail, clientPhone || null, personalizedSubject, trackingToken]
           );
           sentCount++;
         } catch (err: any) {
-          this.logger.error(`Failed to send email to ${r.email}: ${err.message}`);
+          this.logger.error(`Failed to send email to ${clientEmail}: ${err.message}`);
           await pool.query(
             `INSERT INTO digimail_logs 
               (campaign_id, lead_id, recipient_name, recipient_email, recipient_phone, subject, status, error_message, tracking_token, is_opened, sent_at)
              VALUES ($1, $2, $3, $4, $5, $6, 'failed', $7, $8, false, NOW())`,
-            [campaign.id, r.leadId || null, r.name, r.email, r.phone || null, data.subject, err.message, trackingToken]
+            [campaign.id, r.leadId || null, clientName, clientEmail, clientPhone || null, personalizedSubject, err.message, trackingToken]
           );
           failedCount++;
         }
@@ -407,3 +430,4 @@ export class DigimailService {
     };
   }
 }
+

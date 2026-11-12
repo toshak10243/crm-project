@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Swal from 'sweetalert2';
 import { CrmLayout } from '../../components/layout/CrmLayout';
 import api from '../../lib/api';
 
@@ -198,6 +199,8 @@ const DigiMailPage: React.FC = () => {
           name: r.name,
           email: r.email,
           phone: r.phone,
+          city: r.city,
+          company: r.company,
         }));
 
       if (chosenRecipients.length === 0) {
@@ -221,20 +224,52 @@ const DigiMailPage: React.FC = () => {
       return res.data;
     },
     onSuccess: () => {
-      setStatusMessage({
-        type: 'success',
-        text: `Success! Dispatched campaign to ${selectedLeadIds.size} recipient(s). Emails are sending with live open tracking.`,
-      });
+      const sentCount = selectedLeadIds.size;
       setSelectedLeadIds(new Set());
       setCampaignName('');
       queryClient.invalidateQueries({ queryKey: ['digimail-stats'] });
       queryClient.invalidateQueries({ queryKey: ['digimail-campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['digimail-logs'] });
+
+      // Professional SweetAlert Pop-up Confirmation
+      Swal.fire({
+        icon: 'success',
+        title: 'Campaign Dispatched!',
+        html: `
+          <div style="font-size: 13px; color: #475569; line-height: 1.6; text-align: left; padding: 6px 12px;">
+            <p><strong>Total Recipients:</strong> ${sentCount} Client(s)</p>
+            <p><strong>Personalization:</strong> Each client will receive a dynamic personalized email with their unique Name, Phone, and Details.</p>
+            <p><strong>Tracking:</strong> Open status tracking pixel is enabled.</p>
+          </div>
+        `,
+        confirmButtonText: 'Great, View Logs',
+        confirmButtonColor: '#003884',
+        showCancelButton: true,
+        cancelButtonText: 'Stay on Composer',
+        cancelButtonColor: '#94a3b8',
+        customClass: {
+          popup: 'rounded-2xl',
+          confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
+          cancelButton: 'rounded-xl text-xs font-semibold px-4 py-2.5',
+        },
+      }).then((result) => {
+        if (result.isConfirmed) {
+          setActiveTab('logs');
+        }
+      });
     },
     onError: (err: any) => {
-      setStatusMessage({
-        type: 'error',
-        text: err?.response?.data?.message || err?.message || 'Failed to dispatch email campaign',
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to dispatch email campaign';
+      Swal.fire({
+        icon: 'error',
+        title: 'Dispatch Failed',
+        text: errMsg,
+        confirmButtonColor: '#003884',
+        confirmButtonText: 'OK',
+        customClass: {
+          popup: 'rounded-2xl',
+          confirmButton: 'rounded-xl text-xs font-bold px-4 py-2.5',
+        },
       });
     },
   });
@@ -255,9 +290,22 @@ const DigiMailPage: React.FC = () => {
       setNewTemplateSubject('');
       setNewTemplateBody('');
       queryClient.invalidateQueries({ queryKey: ['digimail-templates'] });
+      Swal.fire({
+        icon: 'success',
+        title: 'Template Saved!',
+        text: 'New email template is now ready to use in composer.',
+        confirmButtonColor: '#003884',
+        confirmButtonText: 'OK',
+        timer: 2000,
+      });
     },
     onError: (err: any) => {
-      alert(err?.response?.data?.message || 'Failed to save template');
+      Swal.fire({
+        icon: 'error',
+        title: 'Save Error',
+        text: err?.response?.data?.message || 'Failed to save template',
+        confirmButtonColor: '#003884',
+      });
     },
   });
 

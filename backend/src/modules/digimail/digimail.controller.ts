@@ -93,6 +93,8 @@ export class DigimailController {
         name: string;
         email: string;
         phone?: string;
+        city?: string;
+        company?: string;
       }>;
     }
   ) {
