@@ -64,6 +64,15 @@ export class FinanceService {
     await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS accepted_notes TEXT`);
     await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS rejection_reason TEXT`);
     await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS viewed_at TIMESTAMPTZ`);
+    await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS sections JSONB DEFAULT '[]'`);
+    await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS place_of_supply VARCHAR(100) DEFAULT 'Rajasthan'`);
+    await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS client_gstin VARCHAR(50)`);
+    await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS prepared_by VARCHAR(255) DEFAULT 'DigiInk Solutions'`);
+    await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS gst_type VARCHAR(50) DEFAULT 'cgst_sgst'`);
+    await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS gst_rate DECIMAL(5,2) DEFAULT 18`);
+    await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS payment_due_date VARCHAR(100)`);
+    await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS payment_method VARCHAR(100)`);
+    await pool.query(`ALTER TABLE quotations ADD COLUMN IF NOT EXISTS quotation_date DATE DEFAULT CURRENT_DATE`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS invoices (
@@ -101,7 +110,7 @@ export class FinanceService {
     await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS transaction_id VARCHAR(100)`);
   }
 
-  // Generate Quotation Number: QT-YYYY-XXXX
+  // Generate Quotation Number: DIGI-Q-YYYY-XXXX
   private async generateQuoteNumber(pool: Pool): Promise<string> {
     const year = new Date().getFullYear();
     const res = await pool.query(
@@ -109,7 +118,7 @@ export class FinanceService {
       [year]
     );
     const num = (res.rows[0]?.count || 0) + 1;
-    return `QT-${year}-${String(num).padStart(4, '0')}`;
+    return `DIGI-Q-${year}-${String(num).padStart(4, '0')}`;
   }
 
   // Generate Invoice Number: INV-YYYY-XXXX
@@ -239,13 +248,23 @@ export class FinanceService {
     pool: Pool,
     userId: string,
     data: {
+      quote_number?: string;
       lead_id?: string;
-      title: string;
+      title?: string;
       client_name: string;
       client_email?: string;
       client_phone?: string;
       client_address?: string;
       valid_until?: string;
+      quotation_date?: string;
+      place_of_supply?: string;
+      client_gstin?: string;
+      prepared_by?: string;
+      gst_type?: 'cgst_sgst' | 'igst' | 'none';
+      gst_rate?: number;
+      payment_due_date?: string;
+      payment_method?: string;
+      sections?: any[];
       items: LineItem[];
       discount_type?: 'fixed' | 'percentage';
       discount_value?: number;
@@ -255,20 +274,24 @@ export class FinanceService {
     }
   ) {
     await this.ensureTables(pool);
-    if (!data.title || !data.client_name) {
-      throw new BadRequestException('Title and Client Name are required');
+    if (!data.client_name || !data.client_name.trim()) {
+      throw new BadRequestException('Client Name is required');
     }
 
     const items = data.items || [];
     let subtotal = 0;
     let taxAmount = 0;
+    const gstRate = data.gst_rate !== undefined ? Number(data.gst_rate) : 18;
+    const gstType = data.gst_type || 'cgst_sgst';
 
     for (const item of items) {
       const lineSub = (Number(item.qty) || 1) * (Number(item.rate) || 0);
-      const lineTax = (lineSub * (Number(item.tax_pct) || 0)) / 100;
+      const itemTaxPct = gstType === 'none' ? 0 : (item.tax_pct !== undefined ? Number(item.tax_pct) : gstRate);
+      const lineTax = (lineSub * itemTaxPct) / 100;
       subtotal += lineSub;
       taxAmount += lineTax;
       item.amount = Math.round((lineSub + lineTax) * 100) / 100;
+      item.tax_pct = itemTaxPct;
     }
 
     const discountVal = Number(data.discount_value) || 0;
@@ -280,21 +303,31 @@ export class FinanceService {
     }
 
     const totalAmount = Math.max(0, subtotal + taxAmount - discountAmount);
-    const quoteNumber = await this.generateQuoteNumber(pool);
+    const quoteNumber = data.quote_number?.trim() || (await this.generateQuoteNumber(pool));
     const publicToken = `qt_${crypto.randomBytes(18).toString('hex')}`;
+    const sections = data.sections || [];
+    const placeOfSupply = data.place_of_supply || 'Rajasthan';
+    const clientGstin = data.client_gstin || null;
+    const preparedBy = data.prepared_by || 'DigiInk Solutions';
+    const paymentDueDate = data.payment_due_date || null;
+    const paymentMethod = data.payment_method || null;
+    const quotationDate = data.quotation_date || new Date().toISOString().split('T')[0];
+    const title = data.title?.trim() || 'Project Proposal & Quotation';
 
     const res = await pool.query(
       `INSERT INTO quotations 
         (quote_number, public_token, lead_id, title, client_name, client_email, client_phone, client_address,
          status, items, subtotal, tax_amount, discount_type, discount_value, discount_amount, total_amount,
-         valid_until, terms, notes, created_by, sent_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW())
+         valid_until, terms, notes, created_by, sent_at,
+         sections, place_of_supply, client_gstin, prepared_by, gst_type, gst_rate, payment_due_date, payment_method, quotation_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(),
+               $21, $22, $23, $24, $25, $26, $27, $28, $29)
        RETURNING *`,
       [
         quoteNumber,
         publicToken,
         data.lead_id || null,
-        data.title.trim(),
+        title,
         data.client_name.trim(),
         data.client_email || null,
         data.client_phone || null,
@@ -311,6 +344,15 @@ export class FinanceService {
         data.terms || null,
         data.notes || null,
         userId || null,
+        JSON.stringify(sections),
+        placeOfSupply,
+        clientGstin,
+        preparedBy,
+        gstType,
+        gstRate,
+        paymentDueDate,
+        paymentMethod,
+        quotationDate,
       ]
     );
 
@@ -325,16 +367,20 @@ export class FinanceService {
     let items = data.items !== undefined ? data.items : existing.items;
     let subtotal = Number(existing.subtotal);
     let taxAmount = Number(existing.tax_amount);
+    const gstType = data.gst_type || existing.gst_type || 'cgst_sgst';
+    const gstRate = data.gst_rate !== undefined ? Number(data.gst_rate) : (existing.gst_rate ? Number(existing.gst_rate) : 18);
 
     if (data.items) {
       subtotal = 0;
       taxAmount = 0;
       for (const item of items) {
         const lineSub = (Number(item.qty) || 1) * (Number(item.rate) || 0);
-        const lineTax = (lineSub * (Number(item.tax_pct) || 0)) / 100;
+        const itemTaxPct = gstType === 'none' ? 0 : (item.tax_pct !== undefined ? Number(item.tax_pct) : gstRate);
+        const lineTax = (lineSub * itemTaxPct) / 100;
         subtotal += lineSub;
         taxAmount += lineTax;
         item.amount = Math.round((lineSub + lineTax) * 100) / 100;
+        item.tax_pct = itemTaxPct;
       }
     }
 
@@ -367,8 +413,17 @@ export class FinanceService {
         valid_until = COALESCE($14, valid_until),
         terms = COALESCE($15, terms),
         notes = COALESCE($16, notes),
+        sections = COALESCE($17, sections),
+        place_of_supply = COALESCE($18, place_of_supply),
+        client_gstin = COALESCE($19, client_gstin),
+        prepared_by = COALESCE($20, prepared_by),
+        gst_type = COALESCE($21, gst_type),
+        gst_rate = COALESCE($22, gst_rate),
+        payment_due_date = COALESCE($23, payment_due_date),
+        payment_method = COALESCE($24, payment_method),
+        quotation_date = COALESCE($25, quotation_date),
         updated_at = NOW()
-       WHERE id = $17 AND is_deleted = false
+       WHERE id = $26 AND is_deleted = false
        RETURNING *`,
       [
         data.title,
@@ -387,6 +442,15 @@ export class FinanceService {
         data.valid_until,
         data.terms,
         data.notes,
+        data.sections !== undefined ? JSON.stringify(data.sections) : null,
+        data.place_of_supply,
+        data.client_gstin,
+        data.prepared_by,
+        data.gst_type,
+        data.gst_rate,
+        data.payment_due_date,
+        data.payment_method,
+        data.quotation_date,
         id,
       ]
     );

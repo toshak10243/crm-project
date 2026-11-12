@@ -14,6 +14,11 @@ interface LineItem {
   amount: number;
 }
 
+interface QuotationSection {
+  title: string;
+  content: string;
+}
+
 interface QuotationData {
   id: string;
   quote_number: string;
@@ -23,6 +28,15 @@ interface QuotationData {
   client_email?: string;
   client_phone?: string;
   client_address?: string;
+  place_of_supply?: string;
+  client_gstin?: string;
+  prepared_by?: string;
+  gst_type?: 'cgst_sgst' | 'igst' | 'none';
+  gst_rate?: number;
+  payment_due_date?: string;
+  payment_method?: string;
+  quotation_date?: string;
+  sections?: QuotationSection[];
   status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'converted';
   items: LineItem[];
   subtotal: number;
@@ -338,22 +352,54 @@ export const PublicQuotationView: React.FC = () => {
             </span>
             <div className="mt-1 text-base font-bold text-slate-900">{quote.client_name}</div>
             <div className="text-xs text-slate-600 mt-1 space-y-0.5">
+              {quote.client_address && <div>Address: {quote.client_address}</div>}
+              {quote.place_of_supply && <div>Place of Supply: {quote.place_of_supply}</div>}
+              {quote.client_gstin && <div>GSTIN: {quote.client_gstin}</div>}
               {quote.client_phone && <div>Phone: {quote.client_phone}</div>}
               {quote.client_email && <div>Email: {quote.client_email}</div>}
-              {quote.client_address && <div>Address: {quote.client_address}</div>}
             </div>
           </div>
 
           <div>
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-              Project / Scope Title
+              Prepared By &amp; Proposal Subject
             </span>
-            <div className="mt-1 text-sm font-bold text-slate-900">{quote.title}</div>
+            <div className="mt-1 text-sm font-bold text-slate-900">{quote.prepared_by || 'DigiInk Solutions'}</div>
+            <div className="text-xs text-[#003884] font-semibold mt-1">{quote.title}</div>
             {quote.notes && (
               <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{quote.notes}</p>
             )}
           </div>
         </div>
+
+        {/* Scope of Work Sections */}
+        {quote.sections && quote.sections.length > 0 && (
+          <div className="p-6 sm:p-8 border-b border-slate-200 bg-slate-50/50 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-4 bg-[#003884] rounded-full inline-block"></span>
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                Scope of Work &amp; Project Deliverables
+              </h3>
+            </div>
+            <div className="space-y-3">
+              {quote.sections.map((sec, sIdx) => (
+                <div key={sIdx} className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="w-5 h-5 rounded-md bg-blue-100 text-[#003884] font-bold text-[11px] flex items-center justify-center">
+                      {sIdx + 1}
+                    </span>
+                    <h4 className="text-xs font-bold text-slate-900 tracking-wide uppercase">
+                      {sec.title}
+                    </h4>
+                  </div>
+                  <div className="text-xs text-slate-600 whitespace-pre-line leading-relaxed pl-7">
+                    {sec.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Line Items Table */}
         <div className="p-6 sm:p-8">
@@ -411,7 +457,25 @@ export const PublicQuotationView: React.FC = () => {
 
           {/* Totals & Financial Breakdown */}
           <div className="mt-6 flex flex-col sm:flex-row justify-between items-start gap-6">
-            <div className="w-full sm:max-w-md">
+            <div className="w-full sm:max-w-md space-y-3">
+              {(quote.payment_due_date || quote.payment_method) && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-1">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-1">
+                    Payment Terms
+                  </span>
+                  {quote.payment_due_date && (
+                    <div className="text-slate-700">
+                      <strong className="text-slate-900">Payment Due:</strong> {quote.payment_due_date}
+                    </div>
+                  )}
+                  {quote.payment_method && (
+                    <div className="text-slate-700">
+                      <strong className="text-slate-900">Payment Method:</strong> {quote.payment_method}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {quote.terms && (
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block mb-1.5">
@@ -441,12 +505,34 @@ export const PublicQuotationView: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex justify-between text-slate-600">
-                <span>Total Tax (GST 18%):</span>
-                <span className="font-mono font-semibold text-slate-800">
-                  ₹{Number(quote.tax_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+              {quote.gst_type === 'igst' ? (
+                <div className="flex justify-between text-slate-600">
+                  <span>IGST ({quote.gst_rate || 18}%):</span>
+                  <span className="font-mono font-semibold text-slate-800">
+                    ₹{Number(quote.tax_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              ) : quote.gst_type === 'none' ? (
+                <div className="flex justify-between text-slate-500 italic">
+                  <span>GST:</span>
+                  <span>Exempt / Zero-rated</span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between text-slate-600">
+                    <span>CGST ({(Number(quote.gst_rate || 18) / 2).toFixed(1)}%):</span>
+                    <span className="font-mono font-semibold text-slate-800">
+                      ₹{(Number(quote.tax_amount || 0) / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>SGST ({(Number(quote.gst_rate || 18) / 2).toFixed(1)}%):</span>
+                    <span className="font-mono font-semibold text-slate-800">
+                      ₹{(Number(quote.tax_amount || 0) / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </>
+              )}
 
               <div className="pt-2 border-t border-slate-300 flex justify-between items-center text-sm font-black text-slate-900">
                 <span>Total Proposal Value:</span>
