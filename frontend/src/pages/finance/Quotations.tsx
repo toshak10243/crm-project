@@ -105,23 +105,13 @@ const QuotationsPage: React.FC = () => {
   const [formClientAddress, setFormClientAddress] = useState('');
   const [formClientEmail, setFormClientEmail] = useState('');
   const [formClientPhone, setFormClientPhone] = useState('');
-  const [formTitle, setFormTitle] = useState('Enterprise CRM & Cloud Solutions Implementation');
+  const [formTitle, setFormTitle] = useState('');
 
   // Scope of Work Sections
   const [formSections, setFormSections] = useState<ScopeSection[]>([]);
 
   // Line Items
-  const [formItems, setFormItems] = useState<LineItem[]>([
-    {
-      name: 'DigiInk CRM Enterprise Suite (Annual License)',
-      description: 'Multi-tenant cloud CRM, unlimited leads, sales pipeline, custom form fields & audit logs',
-      hsn: '998314',
-      qty: 1,
-      rate: 35000,
-      tax_pct: 18,
-      amount: 41300,
-    },
-  ]);
+  const [formItems, setFormItems] = useState<LineItem[]>([]);
 
   // Pricing & GST Matrix
   const [formDiscountType, setFormDiscountType] = useState<'fixed' | 'percentage'>('fixed');
@@ -131,8 +121,8 @@ const QuotationsPage: React.FC = () => {
 
   // Payment Details
   const [formPaymentDueDate, setFormPaymentDueDate] = useState('');
-  const [formPaymentMethod, setFormPaymentMethod] = useState('Bank Transfer / UPI');
-  const [formNotes, setFormNotes] = useState('Thank you for choosing DigiInk Solutions for your business needs.');
+  const [formPaymentMethod, setFormPaymentMethod] = useState('');
+  const [formNotes, setFormNotes] = useState('');
   const [formTerms, setFormTerms] = useState(DEFAULT_TERMS);
 
   // 1. Fetch Quotations List
@@ -267,14 +257,6 @@ const QuotationsPage: React.FC = () => {
   };
 
   const handleRemoveItem = (index: number) => {
-    if (formItems.length === 1) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'At least 1 item required',
-        text: 'A quotation must contain at least one line item.',
-      });
-      return;
-    }
     setFormItems((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -337,26 +319,16 @@ const QuotationsPage: React.FC = () => {
     setFormClientAddress('');
     setFormClientEmail('');
     setFormClientPhone('');
-    setFormTitle('Enterprise CRM & Cloud Solutions Implementation');
+    setFormTitle('');
     setFormSections([]);
-    setFormItems([
-      {
-        name: 'DigiInk CRM Enterprise Suite (Annual License)',
-        description: 'Multi-tenant cloud CRM, unlimited leads, sales pipeline, custom form fields & audit logs',
-        hsn: '998314',
-        qty: 1,
-        rate: 35000,
-        tax_pct: 18,
-        amount: 41300,
-      },
-    ]);
+    setFormItems([]);
     setFormDiscountType('fixed');
     setFormDiscountValue(0);
     setFormGstApplication('cgst_sgst');
     setFormGstRate(18);
-    setFormPaymentDueDate('Every 10th of the Month');
-    setFormPaymentMethod('Bank Transfer / UPI');
-    setFormNotes('Thank you for choosing DigiInk Solutions for your business needs.');
+    setFormPaymentDueDate('');
+    setFormPaymentMethod('');
+    setFormNotes('');
     setFormTerms(DEFAULT_TERMS);
   };
 
