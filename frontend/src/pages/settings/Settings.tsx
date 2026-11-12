@@ -461,7 +461,7 @@ const SettingsPage: React.FC = () => {
                           type="text"
                           value={companyForm.companyName}
                           onChange={(e) => setCompanyForm({ ...companyForm, companyName: e.target.value })}
-                          placeholder="e.g. Apex Global Technologies Pvt Ltd"
+                          placeholder="e.g. DigiInk Solutions Pvt Ltd"
                           className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                         />
                       </div>
@@ -471,7 +471,7 @@ const SettingsPage: React.FC = () => {
                           type="text"
                           value={companyForm.brandName}
                           onChange={(e) => setCompanyForm({ ...companyForm, brandName: e.target.value })}
-                          placeholder="e.g. Apex CRM"
+                          placeholder="e.g. DigiInk CRM"
                           className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded focus:outline-none focus:border-[#003884]"
                         />
                       </div>

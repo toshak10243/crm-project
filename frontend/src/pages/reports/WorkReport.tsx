@@ -72,15 +72,15 @@ const WorkReportPage: React.FC = () => {
   });
 
   const company = aboutData || {
-    companyName: 'Apex Global Technologies',
-    brandName: 'Apex CRM',
+    companyName: 'DigiInk Solutions',
+    brandName: 'DigiInk CRM',
     logoUrl: '',
     tagline: 'Enterprise Lead Management & Business Automation System',
-    gstin: '08AAAAA0000A1Z5',
+    gstin: '08AGHPP4568R1ZD',
     pan: 'ABCDE1234F',
-    email: 'contact@apexglobal.com',
-    phone: '+91 98765 43210',
-    website: 'https://apexglobal.com',
+    email: 'support@digiinksolutions.com',
+    phone: '+91 9024154995',
+    website: 'https://www.digiinksolutions.com',
     city: 'Jaipur',
     state: 'Rajasthan',
   };

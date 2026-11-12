@@ -224,7 +224,7 @@ export class DigimailService {
     const campaign = campRes.rows[0];
 
     const transporter = this.getTransporter();
-    const fromAddress = `"${process.env.CRM_COMPANY_NAME || 'Apex Global Technologies'}" <${process.env.SMTP_USER || 'hostingdigiink@gmail.com'}>`;
+    const fromAddress = `"${process.env.CRM_COMPANY_NAME || 'DigiInk Solutions'}" <${process.env.SMTP_USER || 'hostingdigiink@gmail.com'}>`;
     const backendBaseUrl = process.env.BACKEND_URL || 'http://localhost:3001';
 
     let sentCount = 0;

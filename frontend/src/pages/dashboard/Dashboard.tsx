@@ -577,7 +577,7 @@ const MasterDashboard: React.FC = () => {
 
         {/* Footer info */}
         <div className="pt-2 text-center text-xs text-slate-400">
-          Apex CRM Enterprise &bull; Production Workspace &bull; All data synced
+          DigiInk CRM Enterprise &bull; Production Workspace &bull; All data synced
         </div>
       </div>
     </CrmLayout>

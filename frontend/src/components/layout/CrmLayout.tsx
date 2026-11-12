@@ -620,7 +620,7 @@ export const CrmLayout: React.FC<{
                     <span>Hey, {user?.name || 'CRM'}</span>
                   </div>
                   <div className="text-slate-400 text-[11px] truncate mt-0.5">
-                    {user?.email || 'admin@apex.com'}
+                    {user?.email || 'admin@digiink.com'}
                   </div>
                 </div>
 

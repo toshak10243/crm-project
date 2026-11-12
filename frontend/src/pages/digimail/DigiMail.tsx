@@ -68,11 +68,11 @@ const DigiMailPage: React.FC = () => {
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
 
   // Compose State
-  const DEFAULT_SUBJECT = 'Important Update from Apex Global Technologies for {{name}}';
+  const DEFAULT_SUBJECT = 'Important Update from DigiInk Solutions for {{name}}';
   const DEFAULT_HTML_CONTENT = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
   <div style="background: linear-gradient(135deg, #003884, #002860); padding: 26px 20px; text-align: center; color: #ffffff;">
     <h1 style="margin: 0; font-size: 22px; font-weight: 700;">Hello, {{name}}!</h1>
-    <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">Apex Global Technologies • Enterprise Solutions</p>
+    <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">DigiInk Solutions • Enterprise CRM</p>
   </div>
   <div style="padding: 24px; color: #334155; font-size: 14px; line-height: 1.6;">
     <p>Dear <strong>{{name}}</strong>,</p>
@@ -81,10 +81,10 @@ const DigiMailPage: React.FC = () => {
     <div style="margin: 18px 0; padding: 12px 16px; background: #f8fafc; border-left: 4px solid #003884; border-radius: 4px; font-size: 13px; color: #1e293b;">
       <strong>Note:</strong> We are committed to providing you with seamless 24/7 assistance and rapid onboarding.
     </div>
-    <p style="margin-top: 24px;">Warm regards,<br><strong style="color: #003884;">Team Apex Global Technologies</strong></p>
+    <p style="margin-top: 24px;">Warm regards,<br><strong style="color: #003884;">Team DigiInk Solutions</strong></p>
   </div>
   <div style="background: #f1f5f9; padding: 12px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0;">
-    © 2026 Apex Global Technologies. All rights reserved.
+    © 2026 DigiInk Solutions. All rights reserved.
   </div>
 </div>`;
 
@@ -362,7 +362,7 @@ const DigiMailPage: React.FC = () => {
       email: 'di.suvjeet2505@gmail.com',
       phone: '+91 97114 45566',
       city: 'Ahmedabad',
-      company: 'Apex Technologies',
+      company: 'DigiInk Solutions',
     };
 
   const previewSubject = emailSubject
@@ -734,7 +734,7 @@ const DigiMailPage: React.FC = () => {
                     {/* Fake Email Client Header */}
                     <div className="bg-slate-100/90 border-b border-slate-200 px-4 py-3 space-y-1.5 text-[11px] text-slate-600">
                       <div>
-                        <strong>From:</strong> Apex Global Technologies &lt;hostingdigiink@gmail.com&gt;
+                        <strong>From:</strong> DigiInk Solutions &lt;hostingdigiink@gmail.com&gt;
                       </div>
                       <div>
                         <strong>To:</strong> <span className="text-slate-900 font-semibold">{sampleLead.name}</span> &lt;{sampleLead.email}&gt;
@@ -1039,7 +1039,7 @@ const DigiMailPage: React.FC = () => {
                     type="text"
                     value={newTemplateSubject}
                     onChange={(e) => setNewTemplateSubject(e.target.value)}
-                    placeholder="e.g. Welcome to Apex CRM, {{name}}!"
+                    placeholder="e.g. Welcome to DigiInk CRM, {{name}}!"
                     className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none"
                   />
                 </div>
