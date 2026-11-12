@@ -309,22 +309,43 @@ const DigiMailPage: React.FC = () => {
     },
   });
 
+  // Helper to replace dynamic placeholders in preview and templates
+  const replacePlaceholders = (text: string, lead: { name: string; email: string; phone?: string; city?: string; company?: string }) => {
+    if (!text) return '';
+    const name = lead.name || 'Valued Client';
+    const email = lead.email || '';
+    const phone = lead.phone || '';
+    const city = lead.city || '';
+    const company = lead.company || '';
+
+    return text
+      .replace(/\[\s*(client\s*name|customer\s*name|full\s*name|client|customer|name)\s*\]/gi, name)
+      .replace(/\{\{\s*(client_name|customer_name|full_name|client|customer|name)\s*\}\}/gi, name)
+      .replace(/\[\s*(client\s*email|email\s*address|email)\s*\]/gi, email)
+      .replace(/\{\{\s*(client_email|email_address|email)\s*\}\}/gi, email)
+      .replace(/\[\s*(client\s*phone|phone\s*number|mobile\s*number|contact\s*number|contact|mobile|phone)\s*\]/gi, phone)
+      .replace(/\{\{\s*(client_phone|phone_number|mobile_number|contact_number|contact|mobile|phone)\s*\}\}/gi, phone)
+      .replace(/\[\s*(city|location)\s*\]/gi, city)
+      .replace(/\{\{\s*(city|location)\s*\}\}/gi, city)
+      .replace(/\[\s*(company\s*name|company|organization)\s*\]/gi, company)
+      .replace(/\{\{\s*(company_name|company|organization)\s*\}\}/gi, company);
+  };
+
   // Live Preview Replacements
   const sampleLead = allRecipients.find((r) => selectedLeadIds.has(r.id)) || allRecipients[0] || {
     name: 'Rajeev Singhania',
     email: 'rajeev@polymers.in',
     phone: '+91 97114 45566',
+    city: 'Ahmedabad',
+    company: 'Singhania Polymers Ltd',
   };
 
   const previewSubject = emailSubject
-    ? emailSubject.replace(/\{\{\s*name\s*\}\}/gi, sampleLead.name)
+    ? replacePlaceholders(emailSubject, sampleLead)
     : 'No Subject Specified';
 
   const previewHtml = htmlContent
-    ? htmlContent
-        .replace(/\{\{\s*name\s*\}\}/gi, sampleLead.name)
-        .replace(/\{\{\s*email\s*\}\}/gi, sampleLead.email)
-        .replace(/\{\{\s*phone\s*\}\}/gi, sampleLead.phone || '')
+    ? replacePlaceholders(htmlContent, sampleLead)
     : '<div style="color: #94a3b8; font-family: sans-serif; text-align: center; padding: 40px 0;">No content typed yet. Type HTML or plain text on the left to see live preview here...</div>';
 
   return (

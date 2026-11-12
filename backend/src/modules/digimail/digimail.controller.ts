@@ -30,12 +30,10 @@ export class DigimailController {
   @Get('track/:token')
   async trackOpen(
     @Param('token') token: string,
-    @Req() req: Request,
     @Res() res: Response
   ) {
-    const pool = (req as any).tenantPool;
-    if (pool && token) {
-      await this.digimailService.trackOpen(pool, token);
+    if (token) {
+      await this.digimailService.trackOpenPublic(token);
     }
     res.setHeader('Content-Type', 'image/gif');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');

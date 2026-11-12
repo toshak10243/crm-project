@@ -2,10 +2,17 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { Pool } from 'pg';
 import * as nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
+import { DbManagerService } from '../../database/db-manager.service';
+import { TenantPoolService } from '../../database/tenant-pool.service';
 
 @Injectable()
 export class DigimailService {
   private readonly logger = new Logger(DigimailService.name);
+
+  constructor(
+    private readonly dbManagerService: DbManagerService,
+    private readonly tenantPoolService: TenantPoolService,
+  ) {}
 
   // Initialize Nodemailer with credentials from .env
   private getTransporter() {
@@ -149,6 +156,30 @@ export class DigimailService {
     return res.rows[0];
   }
 
+  // Helper to replace all variations of template variables ([Client Name], {{name}}, etc.)
+  private replacePlaceholders(
+    content: string,
+    vars: { name: string; email: string; phone: string; city: string; company: string }
+  ): string {
+    if (!content) return '';
+    return content
+      // Name: [Client Name], [Customer Name], [Full Name], [Name], [Client], [Customer], {{name}}, {{client_name}}, etc.
+      .replace(/\[\s*(client\s*name|customer\s*name|full\s*name|client|customer|name)\s*\]/gi, vars.name)
+      .replace(/\{\{\s*(client_name|customer_name|full_name|client|customer|name)\s*\}\}/gi, vars.name)
+      // Email: [Client Email], [Email Address], [Email], {{email}}, {{client_email}}, etc.
+      .replace(/\[\s*(client\s*email|email\s*address|email)\s*\]/gi, vars.email)
+      .replace(/\{\{\s*(client_email|email_address|email)\s*\}\}/gi, vars.email)
+      // Phone: [Client Phone], [Phone Number], [Mobile Number], [Contact Number], [Phone], [Mobile], {{phone}}, {{mobile}}, etc.
+      .replace(/\[\s*(client\s*phone|phone\s*number|mobile\s*number|contact\s*number|contact|mobile|phone)\s*\]/gi, vars.phone)
+      .replace(/\{\{\s*(client_phone|phone_number|mobile_number|contact_number|contact|mobile|phone)\s*\}\}/gi, vars.phone)
+      // City: [City], [Location], {{city}}, {{location}}
+      .replace(/\[\s*(city|location)\s*\]/gi, vars.city)
+      .replace(/\{\{\s*(city|location)\s*\}\}/gi, vars.city)
+      // Company: [Company Name], [Organization], [Company], {{company}}, {{company_name}}
+      .replace(/\[\s*(company\s*name|company|organization)\s*\]/gi, vars.company)
+      .replace(/\{\{\s*(company_name|company|organization)\s*\}\}/gi, vars.company);
+  }
+
   // 4. Send Email (Supports Single & Bulk up to 500 max)
   async sendBulkEmail(
     pool: Pool,
@@ -212,25 +243,16 @@ export class DigimailService {
         const clientCity = r.city || '';
         const clientCompany = r.company || '';
 
-        let personalizedHtml = data.htmlContent
-          .replace(/\{\{\s*name\s*\}\}/gi, clientName)
-          .replace(/\{\{\s*client_name\s*\}\}/gi, clientName)
-          .replace(/\{\{\s*full_name\s*\}\}/gi, clientName)
-          .replace(/\{\{\s*email\s*\}\}/gi, clientEmail)
-          .replace(/\{\{\s*phone\s*\}\}/gi, clientPhone)
-          .replace(/\{\{\s*mobile\s*\}\}/gi, clientPhone)
-          .replace(/\{\{\s*city\s*\}\}/gi, clientCity)
-          .replace(/\{\{\s*company\s*\}\}/gi, clientCompany);
+        const clientVars = {
+          name: clientName,
+          email: clientEmail,
+          phone: clientPhone,
+          city: clientCity,
+          company: clientCompany,
+        };
 
-        // Also personalize dynamic subject line if variables used
-        const personalizedSubject = data.subject
-          .replace(/\{\{\s*name\s*\}\}/gi, clientName)
-          .replace(/\{\{\s*client_name\s*\}\}/gi, clientName)
-          .replace(/\{\{\s*full_name\s*\}\}/gi, clientName)
-          .replace(/\{\{\s*email\s*\}\}/gi, clientEmail)
-          .replace(/\{\{\s*phone\s*\}\}/gi, clientPhone)
-          .replace(/\{\{\s*city\s*\}\}/gi, clientCity)
-          .replace(/\{\{\s*company\s*\}\}/gi, clientCompany);
+        let personalizedHtml = this.replacePlaceholders(data.htmlContent, clientVars);
+        const personalizedSubject = this.replacePlaceholders(data.subject, clientVars);
 
         // Embed 1x1 Invisible Tracking Pixel for Read/Opened Detection
         const trackingPixel = `<img src="${backendBaseUrl}/api/digimail/track/${trackingToken}" width="1" height="1" style="display:none !important; visibility:hidden; opacity:0; width:0; height:0;" alt="" />`;
@@ -281,33 +303,55 @@ export class DigimailService {
     };
   }
 
-  // 5. Track Email Open via 1x1 Pixel
-  async trackOpen(pool: Pool, trackingToken: string) {
+  // 5. Public Tracking Pixel: Auto-discovers tenant pool and records email open event
+  async trackOpenPublic(trackingToken: string) {
     if (!trackingToken) return;
     try {
-      await this.ensureTables(pool);
-      const res = await pool.query(
-        `UPDATE digimail_logs
-         SET is_opened = true,
-             opened_at = COALESCE(opened_at, NOW()),
-             open_count = open_count + 1
-         WHERE tracking_token = $1
-         RETURNING campaign_id, is_opened`,
-        [trackingToken]
+      const masterPool = this.dbManagerService.getMasterPool();
+      const compRes = await masterPool.query(
+        `SELECT db_name FROM companies WHERE is_active = true`
       );
 
-      if (res.rows.length > 0 && res.rows[0].campaign_id) {
-        // Increment unique opened count on campaign
-        await pool.query(
-          `UPDATE digimail_campaigns 
-           SET opened_count = (SELECT COUNT(DISTINCT id) FROM digimail_logs WHERE campaign_id = $1 AND is_opened = true)
-           WHERE id = $1`,
-          [res.rows[0].campaign_id]
-        );
+      for (const comp of compRes.rows) {
+        try {
+          const tenantPool = this.tenantPoolService.getPool(comp.db_name);
+          const res = await tenantPool.query(
+            `UPDATE digimail_logs
+             SET is_opened = true,
+                 opened_at = COALESCE(opened_at, NOW()),
+                 open_count = open_count + 1
+             WHERE tracking_token = $1
+             RETURNING campaign_id, recipient_email`,
+            [trackingToken]
+          );
+
+          if (res.rows.length > 0) {
+            const campaignId = res.rows[0].campaign_id;
+            this.logger.log(`DigiMail Open Recorded: ${res.rows[0].recipient_email} in database ${comp.db_name}`);
+            if (campaignId) {
+              await tenantPool.query(
+                `UPDATE digimail_campaigns 
+                 SET opened_count = (SELECT COUNT(DISTINCT id) FROM digimail_logs WHERE campaign_id = $1 AND is_opened = true),
+                     updated_at = NOW()
+                 WHERE id = $1`,
+                [campaignId]
+              );
+            }
+            return;
+          }
+        } catch {
+          // If table doesn't exist in one tenant, continue to next
+          continue;
+        }
       }
-    } catch (err) {
-      this.logger.error('Tracking pixel error:', err);
+    } catch (err: any) {
+      this.logger.error(`Tracking pixel error: ${err.message}`);
     }
+  }
+
+  // Backwards compatibility alias
+  async trackOpen(pool: Pool, trackingToken: string) {
+    return this.trackOpenPublic(trackingToken);
   }
 
   // 6. Get Campaigns List with Real-time Open Rates
