@@ -918,3 +918,4 @@ export class FinanceService {
     throw new NotFoundException('Invoice not found or link has expired');
   }
 }
+

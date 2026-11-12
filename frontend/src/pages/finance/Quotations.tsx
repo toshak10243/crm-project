@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -692,9 +693,10 @@ const QuotationsPage: React.FC = () => {
         {/* ======================================================== */}
         {/* MODAL 1: CREATE / EDIT QUOTATION                         */}
         {/* ======================================================== */}
-        {showCreateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-6">
+        {showCreateModal &&
+          createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 overflow-y-auto">
+              <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-6 space-y-6">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
                   <h3 className="text-base font-black text-slate-900">
@@ -993,15 +995,17 @@ const QuotationsPage: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ======================================================== */}
         {/* MODAL 2: PRINTABLE HTML QUOTATION PREVIEW                 */}
         {/* ======================================================== */}
-        {viewingQuotation && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto shadow-2xl p-6 space-y-6">
+        {viewingQuotation &&
+          createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 overflow-y-auto">
+              <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto shadow-2xl p-6 space-y-6">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 no-print">
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-bold text-[#003884] text-sm">{viewingQuotation.quote_number}</span>
@@ -1154,7 +1158,8 @@ const QuotationsPage: React.FC = () => {
                 )}
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </CrmLayout>

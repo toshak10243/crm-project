@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Swal from 'sweetalert2';
 import { CrmLayout } from '../../components/layout/CrmLayout';
@@ -1008,9 +1009,10 @@ const DigiMailPage: React.FC = () => {
         )}
 
         {/* Modal: Create New Template */}
-        {showNewTemplateModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4">
+        {showNewTemplateModal &&
+          createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+              <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <h3 className="font-bold text-sm text-slate-900">Add New Email Template</h3>
                 <button
@@ -1074,7 +1076,8 @@ const DigiMailPage: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </CrmLayout>

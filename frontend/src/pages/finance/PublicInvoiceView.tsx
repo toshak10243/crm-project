@@ -415,3 +415,4 @@ export const PublicInvoiceView: React.FC = () => {
 };
 
 export default PublicInvoiceView;
+
