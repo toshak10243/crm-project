@@ -389,9 +389,6 @@ const DigiMailPage: React.FC = () => {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-black text-slate-900 tracking-tight">DigiMail Hub</h1>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-[#003884] border border-blue-200 uppercase tracking-wide">
-                    Enterprise Bulk Mailer
-                  </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Send high-volume personalized emails to leads with live side-by-side HTML preview and open tracking

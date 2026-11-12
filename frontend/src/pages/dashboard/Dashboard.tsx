@@ -87,9 +87,6 @@ const MasterDashboard: React.FC = () => {
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-xl font-black text-slate-900 tracking-tight">Master Dashboard</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wide">
-                Live Overview
-              </span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
               Real-time enterprise metrics, sales pipeline analysis, and lead velocity
@@ -433,9 +430,6 @@ const MasterDashboard: React.FC = () => {
                   <h3 className="text-sm font-bold text-slate-900">Pipeline Stage Conversion</h3>
                   <p className="text-[11px] text-slate-400">Current active leads across stages</p>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Live Stages
-                </span>
               </div>
 
               <div className="h-56 w-full pt-2">
