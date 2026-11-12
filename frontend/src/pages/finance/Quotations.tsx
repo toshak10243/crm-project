@@ -136,7 +136,7 @@ const QuotationsPage: React.FC = () => {
     queryKey: ['finance-leads-dropdown'],
     queryFn: async () => {
       const res = await api.get('/leads?limit=100');
-      return res.data?.data?.leads || [];
+      return res.data?.data?.records || res.data?.data?.leads || [];
     },
     staleTime: 60 * 1000,
   });
@@ -151,7 +151,7 @@ const QuotationsPage: React.FC = () => {
       setFormClientName(lead.name || '');
       setFormClientEmail(lead.email || '');
       setFormClientPhone(lead.phone || '');
-      setFormClientAddress(lead.city ? `${lead.city}, India` : '');
+      setFormClientAddress(lead.address || (lead.city ? `${lead.city}, India` : ''));
     }
   };
 
