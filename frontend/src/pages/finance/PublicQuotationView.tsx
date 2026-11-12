@@ -409,7 +409,6 @@ export const PublicQuotationView: React.FC = () => {
                 <tr>
                   <th className="py-3 px-4 w-12 text-center">#</th>
                   <th className="py-3 px-4">Item &amp; Description</th>
-                  <th className="py-3 px-3 text-center">HSN/SAC</th>
                   <th className="py-3 px-3 text-right">Qty</th>
                   <th className="py-3 px-3 text-right">Rate (₹)</th>
                   <th className="py-3 px-3 text-right">GST</th>
@@ -429,9 +428,6 @@ export const PublicQuotationView: React.FC = () => {
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-center font-mono text-slate-500">
-                        {item.hsn || '-'}
-                      </td>
                       <td className="py-3 px-3 text-right font-mono font-medium">{item.qty}</td>
                       <td className="py-3 px-3 text-right font-mono font-medium">
                         ₹{Number(item.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -446,7 +442,7 @@ export const PublicQuotationView: React.FC = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="py-6 text-center text-slate-400">
+                    <td colSpan={6} className="py-6 text-center text-slate-400">
                       No line items specified
                     </td>
                   </tr>

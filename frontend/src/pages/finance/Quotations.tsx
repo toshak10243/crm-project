@@ -71,6 +71,18 @@ const DEFAULT_TERMS = `1. Validity: This quotation is valid until the date speci
 3. Taxes: GST as applicable as per Government of India regulations.
 4. Support: Includes standard onboarding and technical support by DigiInk Solutions.`;
 
+const DEFAULT_PAYMENT_METHOD = 'Bank transfer (NEFT / RTGS / IMPS) / UPI';
+const DEFAULT_NOTES = 'Thank you for choosing DigiInk Solutions for your marketing needs. We look forward to working with you.';
+
+const getDefaultDueDateFormatted = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 15);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
+
 const QuotationsPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -119,10 +131,10 @@ const QuotationsPage: React.FC = () => {
   const [formGstApplication, setFormGstApplication] = useState<'cgst_sgst' | 'igst' | 'none'>('cgst_sgst');
   const [formGstRate, setFormGstRate] = useState<number>(18);
 
-  // Payment Details
-  const [formPaymentDueDate, setFormPaymentDueDate] = useState('');
-  const [formPaymentMethod, setFormPaymentMethod] = useState('');
-  const [formNotes, setFormNotes] = useState('');
+  // Payment Details (Pre-filled as per reference)
+  const [formPaymentDueDate, setFormPaymentDueDate] = useState(() => getDefaultDueDateFormatted());
+  const [formPaymentMethod, setFormPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
+  const [formNotes, setFormNotes] = useState(DEFAULT_NOTES);
   const [formTerms, setFormTerms] = useState(DEFAULT_TERMS);
 
   // 1. Fetch Quotations List
@@ -232,7 +244,6 @@ const QuotationsPage: React.FC = () => {
       {
         name: '',
         description: '',
-        hsn: '998314',
         qty: 1,
         rate: 0,
         tax_pct: formGstApplication === 'none' ? 0 : formGstRate,
@@ -326,9 +337,9 @@ const QuotationsPage: React.FC = () => {
     setFormDiscountValue(0);
     setFormGstApplication('cgst_sgst');
     setFormGstRate(18);
-    setFormPaymentDueDate('');
-    setFormPaymentMethod('');
-    setFormNotes('');
+    setFormPaymentDueDate(getDefaultDueDateFormatted());
+    setFormPaymentMethod(DEFAULT_PAYMENT_METHOD);
+    setFormNotes(DEFAULT_NOTES);
     setFormTerms(DEFAULT_TERMS);
   };
 
@@ -883,9 +894,8 @@ const QuotationsPage: React.FC = () => {
                   <thead className="bg-[#0b1329] text-white font-extrabold tracking-wider text-[11px] uppercase">
                     <tr>
                       <th className="py-3 px-4">Service / Item Name</th>
-                      <th className="py-3 px-4 w-32 text-center">HSN/SAC</th>
-                      <th className="py-3 px-4 w-20 text-center">Qty</th>
-                      <th className="py-3 px-4 w-36 text-right">Amount (Rs.)</th>
+                      <th className="py-3 px-4 w-24 text-center">Qty</th>
+                      <th className="py-3 px-4 w-40 text-right">Amount (Rs.)</th>
                       <th className="py-3 px-4 w-20 text-center">Remove</th>
                     </tr>
                   </thead>
@@ -910,15 +920,6 @@ const QuotationsPage: React.FC = () => {
                         </td>
                         <td className="p-3 text-center">
                           <input
-                            type="text"
-                            value={item.hsn || ''}
-                            onChange={(e) => handleItemChange(idx, 'hsn', e.target.value)}
-                            placeholder="998314"
-                            className="w-full px-2 py-1.5 text-center font-mono text-xs border border-slate-200 rounded-lg focus:outline-none"
-                          />
-                        </td>
-                        <td className="p-3 text-center">
-                          <input
                             type="number"
                             min="1"
                             value={item.qty}
@@ -931,9 +932,9 @@ const QuotationsPage: React.FC = () => {
                             type="number"
                             min="0"
                             step="0.01"
-                            value={item.rate}
+                            value={item.rate || ''}
                             onChange={(e) => handleItemChange(idx, 'rate', Number(e.target.value))}
-                            placeholder="0.00"
+                            placeholder="0"
                             className="w-full px-3 py-1.5 text-right font-mono font-bold text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-[#003884]"
                           />
                         </td>
@@ -1502,7 +1503,6 @@ const QuotationsPage: React.FC = () => {
                       <thead className="bg-[#0b1329] text-white font-bold">
                         <tr>
                           <th className="py-2.5 px-3">Service / Item Name</th>
-                          <th className="py-2.5 px-3 text-center">HSN/SAC</th>
                           <th className="py-2.5 px-3 text-center">Qty</th>
                           <th className="py-2.5 px-3 text-right">Rate (₹)</th>
                           <th className="py-2.5 px-3 text-right">GST %</th>
@@ -1516,7 +1516,6 @@ const QuotationsPage: React.FC = () => {
                               <div className="font-bold text-slate-900">{item.name}</div>
                               {item.description && <div className="text-[11px] text-slate-500">{item.description}</div>}
                             </td>
-                            <td className="py-2.5 px-3 text-center font-mono text-slate-500">{item.hsn || '-'}</td>
                             <td className="py-2.5 px-3 text-center font-mono">{item.qty}</td>
                             <td className="py-2.5 px-3 text-right font-mono">₹{Number(item.rate).toLocaleString('en-IN')}</td>
                             <td className="py-2.5 px-3 text-right font-mono">{item.tax_pct}%</td>
