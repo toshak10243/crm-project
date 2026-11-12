@@ -37,6 +37,10 @@ import WorkReportPage from '../pages/reports/WorkReport';
 import IvrPage from '../pages/finance/IvrPage';
 import WaDaddyPage from '../pages/finance/WaDaddyPage';
 import DigiMailPage from '../pages/digimail/DigiMail';
+import QuotationsPage from '../pages/finance/Quotations';
+import InvoicesPage from '../pages/finance/Invoices';
+import PublicQuotationView from '../pages/finance/PublicQuotationView';
+import PublicInvoiceView from '../pages/finance/PublicInvoiceView';
 
 // Super Admin Route Guard
 const SuperAdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -279,6 +283,24 @@ export const router = createBrowserRouter([
   {
     path: '/work-report',
     element: <PrivateRoute><WorkReportPage /></PrivateRoute>,
+  },
+  // Quotations & Invoices (Protected CRM Routes)
+  {
+    path: '/quotations',
+    element: <PrivateRoute><QuotationsPage /></PrivateRoute>,
+  },
+  {
+    path: '/invoices',
+    element: <PrivateRoute><InvoicesPage /></PrivateRoute>,
+  },
+  // Public Client Quotation & Invoice Views (No auth required)
+  {
+    path: '/quote/:token',
+    element: <PublicQuotationView />,
+  },
+  {
+    path: '/invoice/:token',
+    element: <PublicInvoiceView />,
   },
 
   // Fallback

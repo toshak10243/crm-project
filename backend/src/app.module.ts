@@ -14,6 +14,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { WorkReportModule } from './modules/work-report/work-report.module';
 import { WaDaddyModule } from './modules/wadaddy/wadaddy.module';
 import { DigimailModule } from './modules/digimail/digimail.module';
+import { FinanceModule } from './modules/finance/finance.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { DigimailModule } from './modules/digimail/digimail.module';
     WorkReportModule,
     WaDaddyModule,
     DigimailModule,
+    FinanceModule,
   ],
 })
 export class AppModule {}
