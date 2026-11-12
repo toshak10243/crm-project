@@ -68,9 +68,30 @@ const DigiMailPage: React.FC = () => {
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
 
   // Compose State
+  const DEFAULT_SUBJECT = 'Important Update from Apex Global Technologies for {{name}}';
+  const DEFAULT_HTML_CONTENT = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
+  <div style="background: linear-gradient(135deg, #003884, #002860); padding: 26px 20px; text-align: center; color: #ffffff;">
+    <h1 style="margin: 0; font-size: 22px; font-weight: 700;">Hello, {{name}}!</h1>
+    <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">Apex Global Technologies • Enterprise Solutions</p>
+  </div>
+  <div style="padding: 24px; color: #334155; font-size: 14px; line-height: 1.6;">
+    <p>Dear <strong>{{name}}</strong>,</p>
+    <p>Thank you for connecting with us. We have received your inquiry from <strong>{{city}}</strong>.</p>
+    <p>Our dedicated representative will be reaching out to you on <strong>{{phone}}</strong> with custom solutions tailored for your business.</p>
+    <div style="margin: 18px 0; padding: 12px 16px; background: #f8fafc; border-left: 4px solid #003884; border-radius: 4px; font-size: 13px; color: #1e293b;">
+      <strong>Note:</strong> We are committed to providing you with seamless 24/7 assistance and rapid onboarding.
+    </div>
+    <p style="margin-top: 24px;">Warm regards,<br><strong style="color: #003884;">Team Apex Global Technologies</strong></p>
+  </div>
+  <div style="background: #f1f5f9; padding: 12px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0;">
+    © 2026 Apex Global Technologies. All rights reserved.
+  </div>
+</div>`;
+
   const [campaignName, setCampaignName] = useState('');
-  const [emailSubject, setEmailSubject] = useState('');
-  const [htmlContent, setHtmlContent] = useState('');
+  const [emailSubject, setEmailSubject] = useState(DEFAULT_SUBJECT);
+  const [htmlContent, setHtmlContent] = useState(DEFAULT_HTML_CONTENT);
+  const [previewLeadId, setPreviewLeadId] = useState<string>('');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -331,14 +352,18 @@ const DigiMailPage: React.FC = () => {
       .replace(/\{\{\s*(company_name|company|organization)\s*\}\}/gi, company);
   };
 
-  // Live Preview Replacements
-  const sampleLead = allRecipients.find((r) => selectedLeadIds.has(r.id)) || allRecipients[0] || {
-    name: 'Rajeev Singhania',
-    email: 'rajeev@polymers.in',
-    phone: '+91 97114 45566',
-    city: 'Ahmedabad',
-    company: 'Singhania Polymers Ltd',
-  };
+  // Live Preview Replacements (User can toggle ANY lead from dropdown to inspect their personalized preview)
+  const sampleLead =
+    allRecipients.find((r) => r.id === previewLeadId) ||
+    allRecipients.find((r) => selectedLeadIds.has(r.id)) ||
+    allRecipients[0] || {
+      id: 'default',
+      name: 'Suvjeet Sir',
+      email: 'di.suvjeet2505@gmail.com',
+      phone: '+91 97114 45566',
+      city: 'Ahmedabad',
+      company: 'Apex Technologies',
+    };
 
   const previewSubject = emailSubject
     ? replacePlaceholders(emailSubject, sampleLead)
@@ -649,12 +674,12 @@ const DigiMailPage: React.FC = () => {
               {/* Variable Insertion Pills */}
               <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                 <span className="font-semibold text-slate-500">Insert Dynamic Tags:</span>
-                {['{{name}}', '{{email}}', '{{phone}}'].map((tag) => (
+                {['{{name}}', '{{phone}}', '{{city}}', '{{email}}', '{{company}}'].map((tag) => (
                   <button
                     key={tag}
                     type="button"
                     onClick={() => setHtmlContent((prev) => prev + ` ${tag} `)}
-                    className="px-2 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] hover:border-blue-500 hover:text-blue-600 cursor-pointer shadow-2xs"
+                    className="px-2 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] hover:border-blue-500 hover:text-[#003884] font-semibold cursor-pointer shadow-2xs transition"
                   >
                     + {tag}
                   </button>
@@ -673,26 +698,51 @@ const DigiMailPage: React.FC = () => {
                     rows={16}
                     value={htmlContent}
                     onChange={(e) => setHtmlContent(e.target.value)}
-                    placeholder="<h2>Hello {{name}},</h2><p>We are excited to share our latest updates with you...</p>"
-                    className="w-full flex-1 p-3 font-mono text-xs bg-slate-900 text-slate-100 border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003884] leading-relaxed resize-y"
+                    placeholder="Type or paste custom HTML code here (use {{name}}, {{phone}}, {{city}}, {{email}} for dynamic personalization)..."
+                    className="w-full flex-1 p-3 font-mono text-xs bg-slate-900 text-slate-100 placeholder:text-slate-500 placeholder:italic border border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003884] leading-relaxed resize-y"
                   />
                 </div>
 
                 {/* Right: Live Preview Box */}
                 <div className="flex flex-col space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
-                    <span>Live Preview (Sample: {sampleLead.name})</span>
-                    <span className="text-[10px] text-emerald-600 font-semibold">● Real-time render</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] font-bold text-slate-600">
+                    <div className="flex items-center gap-2">
+                      <span>Live Personalized Preview</span>
+                      {allRecipients.length > 0 && (
+                        <div className="flex items-center gap-1.5 ml-2 font-normal">
+                          <span className="text-[10px] text-slate-400">Preview as:</span>
+                          <select
+                            value={sampleLead.id}
+                            onChange={(e) => setPreviewLeadId(e.target.value)}
+                            className="text-[11px] font-semibold bg-white border border-slate-300 rounded-lg px-2 py-0.5 text-slate-800 cursor-pointer focus:outline-none focus:border-[#003884]"
+                          >
+                            {allRecipients.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.name} {r.city ? `(${r.city})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Real-time render
+                    </span>
                   </div>
 
                   <div className="flex-1 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col shadow-inner">
                     {/* Fake Email Client Header */}
-                    <div className="bg-slate-100/90 border-b border-slate-200 px-4 py-3 space-y-1 text-[11px] text-slate-600">
+                    <div className="bg-slate-100/90 border-b border-slate-200 px-4 py-3 space-y-1.5 text-[11px] text-slate-600">
                       <div>
-                        <strong>From:</strong> DigiInk Solutions &lt;hostingdigiink@gmail.com&gt;
+                        <strong>From:</strong> Apex Global Technologies &lt;hostingdigiink@gmail.com&gt;
                       </div>
                       <div>
-                        <strong>To:</strong> {sampleLead.name} &lt;{sampleLead.email}&gt;
+                        <strong>To:</strong> <span className="text-slate-900 font-semibold">{sampleLead.name}</span> &lt;{sampleLead.email}&gt;
+                        {selectedLeadIds.size > 1 && (
+                          <span className="ml-2 inline-block px-2 py-0.5 bg-blue-100 text-[#003884] rounded-md text-[10px] font-bold">
+                            +{selectedLeadIds.size - 1} other selected clients (each receives their own email)
+                          </span>
+                        )}
                       </div>
                       <div className="text-slate-900 font-semibold">
                         <strong>Subject:</strong> {previewSubject}
