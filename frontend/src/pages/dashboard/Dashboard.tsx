@@ -21,10 +21,6 @@ import {
 const MasterDashboard: React.FC = () => {
   const navigate = useNavigate();
 
-  // Dialpad state
-  const [dialedNumber, setDialedNumber] = useState('');
-  const [callStatus, setCallStatus] = useState<string | null>(null);
-
   // Filter state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -67,10 +63,6 @@ const MasterDashboard: React.FC = () => {
     todayBirthday: 0,
     totalBranches: 0,
     totalCounselors: 0,
-    totalCalls: 0,
-    incomingCalls: 0,
-    outgoingCalls: 0,
-    totalDurationSeconds: 0,
   };
 
   const chartData = dashboardData?.chartData || [];
@@ -78,29 +70,6 @@ const MasterDashboard: React.FC = () => {
   const funnelData = dashboardData?.funnelData || [];
   const recentLeads = dashboardData?.recentLeads || [];
   const performers = dashboardData?.performers || [];
-
-  const handleDial = (num: string) => {
-    if (dialedNumber.length < 15) {
-      setDialedNumber((prev) => prev + num);
-    }
-  };
-
-  const handleBackspace = () => {
-    setDialedNumber((prev) => prev.slice(0, -1));
-  };
-
-  const handleClear = () => {
-    setDialedNumber('');
-    setCallStatus(null);
-  };
-
-  const handleCall = () => {
-    if (!dialedNumber) return;
-    setCallStatus('Connecting via Cloud IVR...');
-    setTimeout(() => {
-      setCallStatus('Ringing (+91 ' + dialedNumber + ')...');
-    }, 1200);
-  };
 
   const handleResetFilter = () => {
     setStartDate('');
@@ -110,219 +79,234 @@ const MasterDashboard: React.FC = () => {
     refetch();
   };
 
-  // Format Duration string
-  const formatDuration = (totalSeconds: number) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins}m ${secs}s`;
-  };
-
   return (
     <CrmLayout>
-      <div className="space-y-8 max-w-7xl pb-16">
-        {/* Top Section: 4 Metric Cards + Enhanced Telephony Dialpad */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left: 4 Metric Cards (100% Dynamic from Database) */}
-          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* 1. Total Lead */}
-            <div
-              onClick={() => navigate('/crm/all-leads')}
-              className="bg-[#fef3c7]/60 border border-amber-200/80 rounded-2xl p-6 flex items-center gap-5 transition-all hover:shadow-md cursor-pointer"
+      <div className="space-y-6 max-w-7xl pb-16">
+        {/* Top Header & Fast Action Row */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">Master Dashboard</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wide">
+                Live Overview
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Real-time enterprise metrics, sales pipeline analysis, and lead velocity
+            </p>
+          </div>
+
+          {/* Quick Action Navigation */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => navigate('/crm/add-lead')}
+              className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-[#003884] hover:bg-[#002860] active:scale-98 transition rounded-xl shadow-xs cursor-pointer"
             >
-              <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Add New Lead</span>
+            </button>
+
+            <button
+              onClick={() => navigate('/work-report')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition rounded-xl cursor-pointer"
+            >
+              <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Work Report</span>
+            </button>
+
+            <button
+              onClick={() => navigate('/crm/all-leads')}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition rounded-xl cursor-pointer"
+            >
+              <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+              <span>All Leads</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* SECTION 1: TOP 6 METRICS CARDS (FULL WIDTH GRID)          */}
+        {/* ========================================================= */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* 1. Total Leads */}
+          <div
+            onClick={() => navigate('/crm/all-leads')}
+            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-blue-300 cursor-pointer shadow-2xs group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Leads</span>
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-[#003884] group-hover:text-white transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Leads</p>
-                <h3 className="text-3xl font-extrabold text-slate-900 mt-1">
-                  {isLoading ? '...' : Number(metrics.totalLeads).toLocaleString()}
-                </h3>
-                <p className="text-[11px] text-amber-700/80 font-medium mt-0.5">
-                  {metrics.allFollowup} followups scheduled
-                </p>
-              </div>
             </div>
-
-            {/* 2. Total Branch */}
-            <div
-              onClick={() => navigate('/master/branch')}
-              className="bg-[#e0f2fe]/60 border border-sky-200/80 rounded-2xl p-6 flex items-center gap-5 transition-all hover:shadow-md cursor-pointer"
-            >
-              <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Branches</p>
-                <h3 className="text-3xl font-extrabold text-slate-900 mt-1">
-                  {isLoading ? '...' : metrics.totalBranches}
-                </h3>
-                <p className="text-[11px] text-sky-700/80 font-medium mt-0.5">Active enterprise locations</p>
-              </div>
-            </div>
-
-            {/* 3. Total Counselors / Sales Agents */}
-            <div
-              onClick={() => navigate('/admin-users')}
-              className="bg-[#dcfce7]/60 border border-emerald-200/80 rounded-2xl p-6 flex items-center gap-5 transition-all hover:shadow-md cursor-pointer"
-            >
-              <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Counsellors</p>
-                <h3 className="text-3xl font-extrabold text-slate-900 mt-1">
-                  {isLoading ? '...' : metrics.totalCounselors}
-                </h3>
-                <p className="text-[11px] text-emerald-700/80 font-medium mt-0.5">Team members active</p>
-              </div>
-            </div>
-
-            {/* 4. Today's Birthdays */}
-            <div
-              onClick={() => navigate('/crm/today-birthday')}
-              className="bg-[#f3e8ff]/60 border border-purple-200/80 rounded-2xl p-6 flex items-center gap-5 transition-all hover:shadow-md cursor-pointer"
-            >
-              <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Today's Birthdays</p>
-                <h3 className="text-3xl font-extrabold text-slate-900 mt-1">
-                  {isLoading ? '...' : metrics.todayBirthday}
-                </h3>
-                <p className="text-[11px] text-purple-700/80 font-medium mt-0.5">
-                  {metrics.todayBirthday > 0 ? 'Wishes pending' : 'No birthdays today'}
-                </p>
-              </div>
+            <div className="mt-3">
+              <h3 className="text-2xl font-black text-slate-900">
+                {isLoading ? '...' : Number(metrics.totalLeads).toLocaleString()}
+              </h3>
+              <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Active database</p>
             </div>
           </div>
 
-          {/* Right: Cloud IVR Telephony Dialpad */}
-          <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Cloud IVR Telephony</span>
-              </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-600 font-semibold border border-blue-100">
-                {metrics.totalCalls} Calls Logged
-              </span>
-            </div>
-
-            {/* Dialed Display */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-4 text-center">
-              <div className="text-lg font-bold font-mono tracking-wider text-slate-800 min-h-[28px] flex items-center justify-center">
-                {dialedNumber || <span className="text-slate-300 text-sm font-sans">Enter phone number...</span>}
-              </div>
-              {callStatus && (
-                <div className="text-[11px] font-semibold text-emerald-600 mt-1 animate-pulse">
-                  {callStatus}
-                </div>
-              )}
-            </div>
-
-            {/* Dialpad Buttons 0-9, *, # */}
-            <div className="grid grid-cols-3 gap-2.5 mb-4">
-              {[
-                { n: '1', sub: '' },
-                { n: '2', sub: 'ABC' },
-                { n: '3', sub: 'DEF' },
-                { n: '4', sub: 'GHI' },
-                { n: '5', sub: 'JKL' },
-                { n: '6', sub: 'MNO' },
-                { n: '7', sub: 'PQRS' },
-                { n: '8', sub: 'TUV' },
-                { n: '9', sub: 'WXYZ' },
-                { n: '*', sub: '' },
-                { n: '0', sub: '+' },
-                { n: '#', sub: '' },
-              ].map((btn) => (
-                <button
-                  key={btn.n}
-                  onClick={() => handleDial(btn.n)}
-                  className="h-11 rounded-lg bg-slate-50 hover:bg-blue-50 hover:border-blue-300 border border-slate-200 text-slate-700 font-semibold flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95"
-                >
-                  <span className="text-sm leading-none">{btn.n}</span>
-                  {btn.sub && <span className="text-[8px] text-slate-400 leading-none mt-0.5">{btn.sub}</span>}
-                </button>
-              ))}
-            </div>
-
-            {/* Action Buttons: Clear, Dial, Backspace */}
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={handleClear}
-                className="py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-colors cursor-pointer"
-              >
-                Clear
-              </button>
-              <button
-                onClick={handleCall}
-                className="py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+          {/* 2. Today's Followup */}
+          <div
+            onClick={() => navigate('/crm/today-followup')}
+            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-amber-300 cursor-pointer shadow-2xs group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Today Followups</span>
+              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Call
-              </button>
-              <button
-                onClick={handleBackspace}
-                className="py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs flex items-center justify-center transition-colors cursor-pointer"
-              >
-                ⌫
-              </button>
+              </div>
+            </div>
+            <div className="mt-3">
+              <h3 className="text-2xl font-black text-slate-900">
+                {isLoading ? '...' : metrics.todayFollowup}
+              </h3>
+              <p className="text-[10px] text-amber-600 font-semibold mt-0.5">Due today</p>
+            </div>
+          </div>
+
+          {/* 3. All Followups */}
+          <div
+            onClick={() => navigate('/crm/all-followup')}
+            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-indigo-300 cursor-pointer shadow-2xs group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">All Followups</span>
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-3">
+              <h3 className="text-2xl font-black text-slate-900">
+                {isLoading ? '...' : metrics.allFollowup}
+              </h3>
+              <p className="text-[10px] text-indigo-600 font-semibold mt-0.5">Scheduled tasks</p>
+            </div>
+          </div>
+
+          {/* 4. Total Branches */}
+          <div
+            onClick={() => navigate('/master/branch')}
+            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-sky-300 cursor-pointer shadow-2xs group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Branches</span>
+              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center group-hover:bg-sky-600 group-hover:text-white transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-3">
+              <h3 className="text-2xl font-black text-slate-900">
+                {isLoading ? '...' : metrics.totalBranches}
+              </h3>
+              <p className="text-[10px] text-sky-600 font-semibold mt-0.5">Enterprise units</p>
+            </div>
+          </div>
+
+          {/* 5. Total Counselors */}
+          <div
+            onClick={() => navigate('/admin-users')}
+            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-emerald-300 cursor-pointer shadow-2xs group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Team / Reps</span>
+              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-3">
+              <h3 className="text-2xl font-black text-slate-900">
+                {isLoading ? '...' : metrics.totalCounselors}
+              </h3>
+              <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Active counselors</p>
+            </div>
+          </div>
+
+          {/* 6. Today's Birthdays */}
+          <div
+            onClick={() => navigate('/crm/today-birthday')}
+            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-purple-300 cursor-pointer shadow-2xs group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Birthdays</span>
+              <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-3">
+              <h3 className="text-2xl font-black text-slate-900">
+                {isLoading ? '...' : metrics.todayBirthday}
+              </h3>
+              <p className="text-[10px] text-purple-600 font-semibold mt-0.5">
+                {metrics.todayBirthday > 0 ? 'Wishes pending' : 'No birthdays today'}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Section 2: Leads By Date Chart + Dynamic Filters */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* ========================================================= */}
+        {/* SECTION 2: LEADS INFLOW VELOCITY & FILTERS               */}
+        {/* ========================================================= */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
               <h2 className="text-base font-bold text-slate-900 tracking-tight">Leads Inflow Velocity</h2>
-              <p className="text-xs text-slate-500">Real-time incoming lead counts across selected timeline</p>
+              <p className="text-xs text-slate-500">Daily incoming lead volume pattern across selected timeline</p>
             </div>
-            <div className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-              Filtered Total: {metrics.totalLeads} leads
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold px-3 py-1 rounded-lg bg-blue-50 text-[#003884] border border-blue-200">
+                Total Leads: {metrics.totalLeads}
+              </span>
             </div>
           </div>
 
           {/* Filter Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-end">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Start Date</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-600"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">End Date</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-600"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Manager / Counselor</label>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Manager / Representative</label>
               <select
                 value={manager}
                 onChange={(e) => setManager(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-600"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
               >
-                <option value="">All Managers</option>
+                <option value="">All Representatives</option>
                 {managersList.map((m: any) => (
                   <option key={m.id} value={m.id}>
                     {m.name} ({m.role})
@@ -331,11 +315,11 @@ const MasterDashboard: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Pipeline Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-600"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
               >
                 <option value="">All Statuses</option>
                 {statusesList.map((st: any) => (
@@ -349,21 +333,21 @@ const MasterDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={handleResetFilter}
-                className="w-full py-2 px-4 rounded-lg bg-[#003884] hover:bg-blue-900 text-white font-semibold text-xs transition-colors cursor-pointer shadow-xs"
+                className="w-full py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer border border-slate-200"
               >
-                Reset Filter
+                Reset Filters
               </button>
             </div>
           </div>
 
           {/* Area Chart with Real Data */}
-          <div className="h-72 w-full pt-4">
+          <div className="h-64 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="leadGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#003884" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#003884" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -378,55 +362,59 @@ const MasterDashboard: React.FC = () => {
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                   }}
                 />
-                <Area type="monotone" dataKey="leads" stroke="#2563eb" strokeWidth={2.5} fillOpacity={1} fill="url(#leadGrad)" />
+                <Area type="monotone" dataKey="leads" stroke="#003884" strokeWidth={2.5} fillOpacity={1} fill="url(#leadGrad)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Section 3: Lead Sources Distribution (Donut) & Live Funnel (Bar) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* ========================================================= */}
+        {/* SECTION 3: LEAD SOURCE BREAKDOWN & PIPELINE STAGE FUNNEL  */}
+        {/* ========================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Lead Sources Donut Chart */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Lead Source Channel Breakdown</h3>
-                <p className="text-[11px] text-slate-400">Captured lead origin attribution</p>
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Lead Source Attribution</h3>
+                  <p className="text-[11px] text-slate-400">Incoming origin channels</p>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                  {leadSourceData.length} Channels
+                </span>
               </div>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
-                Live Channels
-              </span>
-            </div>
 
-            <div className="h-60 w-full flex items-center justify-center">
-              {leadSourceData.length > 0 && leadSourceData.some((d: any) => d.value > 0) ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={leadSourceData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={80}
-                      paddingAngle={4}
-                      dataKey="value"
-                    >
-                      {leadSourceData.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="text-xs text-slate-400 font-medium">No lead source records found</div>
-              )}
+              <div className="h-56 w-full flex items-center justify-center">
+                {leadSourceData.length > 0 && leadSourceData.some((d: any) => d.value > 0) ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={leadSourceData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={80}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {leadSourceData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="text-xs text-slate-400 font-medium">No lead source records found</div>
+                )}
+              </div>
             </div>
 
             {/* Legend */}
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
               {leadSourceData.map((s: any, idx: number) => (
-                <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50">
+                <div key={idx} className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-100">
                   <div className="flex items-center gap-2 truncate">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
                     <span className="text-slate-700 font-medium truncate">{s.name}</span>
@@ -438,141 +426,158 @@ const MasterDashboard: React.FC = () => {
           </div>
 
           {/* Sales Pipeline Funnel (Bar Chart from real DB lead_statuses) */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Pipeline Stage Conversion</h3>
-                <p className="text-[11px] text-slate-400">Current lead counts mapped across statuses</p>
-              </div>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-100">
-                Database Pipeline
-              </span>
-            </div>
-
-            <div className="h-60 w-full">
-              {funnelData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={funnelData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="stage" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#ffffff',
-                        borderColor: '#e2e8f0',
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]}>
-                      {funnelData.map((entry: any, index: number) => (
-                        <Cell key={`bar-${index}`} fill={entry.color || '#2563eb'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                  No pipeline status data
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Pipeline Stage Conversion</h3>
+                  <p className="text-[11px] text-slate-400">Current active leads across stages</p>
                 </div>
-              )}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Live Stages
+                </span>
+              </div>
+
+              <div className="h-56 w-full pt-2">
+                {funnelData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={funnelData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="stage" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                      <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          borderColor: '#e2e8f0',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Bar dataKey="count" fill="#003884" radius={[6, 6, 0, 0]}>
+                        {funnelData.map((entry: any, index: number) => (
+                          <Cell key={`bar-${index}`} fill={entry.color || '#003884'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                    No pipeline status data
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600">
-              <span>Cloud Telephony Duration Logged:</span>
-              <span className="font-bold text-emerald-600 text-sm">
-                {formatDuration(metrics.totalDurationSeconds)}
-              </span>
+            {/* Quick summary strip */}
+            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs">
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                <span className="text-slate-600 font-medium">Pipeline Stages:</span>
+                <span className="font-bold text-slate-900">{funnelData.length}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                <span className="text-slate-600 font-medium">Stage Leads:</span>
+                <span className="font-bold text-[#003884]">{metrics.totalLeads}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Section 4: Recent Leads & Top Sales Reps (Direct from Database) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* ========================================================= */}
+        {/* SECTION 4: RECENT LEADS & TOP PERFORMERS                  */}
+        {/* ========================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Leads */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900">Recent Leads</h3>
-              <span
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Recent Customer Inquiries</h3>
+                <p className="text-[11px] text-slate-400">Latest logged records in pipeline</p>
+              </div>
+              <button
                 onClick={() => navigate('/crm/all-leads')}
-                className="text-xs text-blue-600 font-semibold cursor-pointer hover:underline"
+                className="text-xs text-[#003884] hover:text-blue-700 font-bold hover:underline cursor-pointer"
               >
                 View All Leads →
-              </span>
+              </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {recentLeads.length > 0 ? (
                 recentLeads.map((l: any) => (
                   <div
                     key={l.id}
                     onClick={() => navigate(`/crm/view-lead/${l.id}`)}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 hover:bg-blue-50/40 border border-slate-100 transition-colors cursor-pointer text-xs"
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-100 transition-colors cursor-pointer text-xs"
                   >
                     <div>
-                      <div className="font-semibold text-slate-800">
+                      <div className="font-semibold text-slate-900">
                         {l.name}{' '}
-                        {l.city && <span className="font-normal text-slate-400">({l.city})</span>}
+                        {l.city && <span className="font-normal text-slate-400 text-[11px]">({l.city})</span>}
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">
-                        {l.phone} • {l.lead_from || 'Direct'}
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        {l.phone || 'No Phone'} • <span className="text-slate-600 font-medium">{l.lead_from || 'Direct'}</span>
                       </div>
                     </div>
                     <span
-                      className="px-2.5 py-1 rounded text-[10px] font-semibold border"
-                      style={{
-                        backgroundColor: `${l.status_color || '#2563eb'}15`,
-                        color: l.status_color || '#2563eb',
-                        borderColor: `${l.status_color || '#2563eb'}40`,
-                      }}
+                      className="px-2.5 py-1 rounded text-[10px] font-bold text-white shadow-2xs uppercase tracking-wide"
+                      style={{ backgroundColor: l.status_color || '#3b82f6' }}
                     >
                       {l.status_name || 'NEW'}
                     </span>
                   </div>
                 ))
               ) : (
-                <div className="py-6 text-center text-xs text-slate-400">No leads found in database</div>
+                <div className="py-8 text-center text-xs text-slate-400">No leads found in database</div>
               )}
             </div>
           </div>
 
           {/* Top Sales Team Performers */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900">Sales Team Activity</h3>
-              <span className="text-xs text-slate-400">Live Team Stats</span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Team Work Allocation</h3>
+                <p className="text-[11px] text-slate-400">Representatives & lead handling ratio</p>
+              </div>
+              <button
+                onClick={() => navigate('/admin-users')}
+                className="text-xs text-[#003884] hover:text-blue-700 font-bold hover:underline cursor-pointer"
+              >
+                Manage Team →
+              </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {performers.length > 0 ? (
                 performers.map((rep: any, idx: number) => (
                   <div
                     key={rep.id}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs"
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs">
+                      <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#003884] font-black flex items-center justify-center text-xs border border-blue-100">
                         #{idx + 1}
                       </div>
                       <div>
-                        <div className="font-semibold text-slate-800">{rep.name}</div>
+                        <div className="font-bold text-slate-900">{rep.name}</div>
                         <div className="text-[11px] text-slate-400 capitalize">{rep.role}</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-emerald-600">{rep.leads} leads handled</div>
-                      <div className="text-[10px] text-slate-400">{rep.calls} IVR calls logged</div>
+                      <span className="inline-block px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-[11px]">
+                        {rep.leads_handled !== undefined ? rep.leads_handled : rep.leads} leads handled
+                      </span>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="py-6 text-center text-xs text-slate-400">No team activity found</div>
+                <div className="py-8 text-center text-xs text-slate-400">No team activity found</div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="pt-4 pb-2 text-center text-xs text-slate-400">
-          &copy; {new Date().getFullYear()} CRM Cloud. All Rights Reserved.
+        {/* Footer info */}
+        <div className="pt-2 text-center text-xs text-slate-400">
+          Apex CRM Enterprise &bull; Production Workspace &bull; All data synced
         </div>
       </div>
     </CrmLayout>
