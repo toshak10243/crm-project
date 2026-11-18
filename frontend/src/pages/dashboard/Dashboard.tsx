@@ -21,13 +21,43 @@ import {
 const MasterDashboard: React.FC = () => {
   const navigate = useNavigate();
 
-  // Filter state
+  // =========================================================================
+  // 1. GLOBAL DASHBOARD FILTERS STATE
+  // =========================================================================
+  const [globalPreset, setGlobalPreset] = useState<'all' | 'today' | '7days' | '30days' | 'this_month' | 'custom'>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [branch, setBranch] = useState('');
   const [manager, setManager] = useState('');
   const [status, setStatus] = useState('');
+  const [source, setSource] = useState('');
 
-  // 1. Fetch Form Dropdown Options (Managers & Statuses for filters)
+  // =========================================================================
+  // 2. PER-GRAPH DEDICATED IN-CARD FILTERS STATE
+  // =========================================================================
+  // Graph 1: Leads Inflow Velocity
+  const [velocityDays, setVelocityDays] = useState<'7' | '14' | '30' | '90'>('7');
+  const [velocityManager, setVelocityManager] = useState('');
+  const [velocityStatus, setVelocityStatus] = useState('');
+
+  // Graph 2: Lead Source Attribution
+  const [sourceTimeframe, setSourceTimeframe] = useState('');
+  const [sourceManager, setSourceManager] = useState('');
+
+  // Graph 3: Pipeline Stage Conversion
+  const [funnelTimeframe, setFunnelTimeframe] = useState('');
+  const [funnelSource, setFunnelSource] = useState('');
+  const [funnelManager, setFunnelManager] = useState('');
+
+  // Section 4: Recent Leads & Team Allocation
+  const [recentStatus, setRecentStatus] = useState('');
+  const [recentSource, setRecentSource] = useState('');
+  const [performersTimeframe, setPerformersTimeframe] = useState('');
+  const [performersRole, setPerformersRole] = useState('');
+
+  // =========================================================================
+  // 3. FETCH DROPDOWN OPTIONS FROM BACKEND
+  // =========================================================================
   const { data: optionsData } = useQuery({
     queryKey: ['lead-form-options'],
     queryFn: async () => {
@@ -37,23 +67,69 @@ const MasterDashboard: React.FC = () => {
     staleTime: 60 * 1000,
   });
 
+  const branchesList = optionsData?.branches || [];
   const managersList = optionsData?.counselors || [];
   const statusesList = optionsData?.statuses || [];
+  const rawLeadSources = optionsData?.leadSources || [];
 
-  // 2. Fetch Real-time Dashboard Metrics from DB
+  // =========================================================================
+  // 4. FETCH REAL-TIME DASHBOARD DATA (GLOBAL + PER-GRAPH OVERRIDES)
+  // =========================================================================
   const { data: dashboardData, isLoading, refetch } = useQuery({
-    queryKey: ['dashboard-metrics', startDate, endDate, manager, status],
+    queryKey: [
+      'dashboard-metrics',
+      startDate,
+      endDate,
+      branch,
+      manager,
+      status,
+      source,
+      velocityDays,
+      velocityManager,
+      velocityStatus,
+      sourceTimeframe,
+      sourceManager,
+      funnelTimeframe,
+      funnelSource,
+      funnelManager,
+      recentStatus,
+      recentSource,
+      performersTimeframe,
+      performersRole,
+    ],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
+      if (branch) params.append('branchId', branch);
       if (manager) params.append('managerId', manager);
       if (status) params.append('statusId', status);
+      if (source) params.append('source', source);
+
+      // Graph 1 overrides
+      if (velocityDays) params.append('velocityDays', velocityDays);
+      if (velocityManager) params.append('velocityManagerId', velocityManager);
+      if (velocityStatus) params.append('velocityStatusId', velocityStatus);
+
+      // Graph 2 overrides
+      if (sourceTimeframe) params.append('sourceTimeframe', sourceTimeframe);
+      if (sourceManager) params.append('sourceManagerId', sourceManager);
+
+      // Graph 3 overrides
+      if (funnelTimeframe) params.append('funnelTimeframe', funnelTimeframe);
+      if (funnelSource) params.append('funnelSource', funnelSource);
+      if (funnelManager) params.append('funnelManagerId', funnelManager);
+
+      // Section 4 overrides
+      if (recentStatus) params.append('recentStatusId', recentStatus);
+      if (recentSource) params.append('recentSource', recentSource);
+      if (performersTimeframe) params.append('performersTimeframe', performersTimeframe);
+      if (performersRole) params.append('performersRole', performersRole);
 
       const res = await api.get(`/leads/dashboard-metrics?${params.toString()}`);
       return res.data?.data;
     },
-    refetchInterval: 30 * 1000, // Poll every 30 seconds for live updates
+    refetchInterval: 30 * 1000,
   });
 
   const metrics = dashboardData?.metrics || {
@@ -71,25 +147,116 @@ const MasterDashboard: React.FC = () => {
   const recentLeads = dashboardData?.recentLeads || [];
   const performers = dashboardData?.performers || [];
 
+  // Available unique sources
+  const allLeadSources = Array.from(
+    new Set([
+      ...rawLeadSources.map((s: any) => s.name),
+      ...leadSourceData.map((s: any) => s.name),
+      'Website',
+      'Google Ads',
+      'Facebook / Meta Ads',
+      'Direct',
+      'Referral',
+      'IndiaMART',
+      'WhatsApp',
+    ].filter(Boolean))
+  );
+
+  // =========================================================================
+  // 5. PRESET TIMELINE HANDLER
+  // =========================================================================
+  const handlePresetChange = (preset: 'all' | 'today' | '7days' | '30days' | 'this_month' | 'custom') => {
+    setGlobalPreset(preset);
+    const now = new Date();
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+    if (preset === 'all') {
+      setStartDate('');
+      setEndDate('');
+    } else if (preset === 'today') {
+      const t = fmt(now);
+      setStartDate(t);
+      setEndDate(t);
+    } else if (preset === '7days') {
+      const d = new Date();
+      d.setDate(d.getDate() - 6);
+      setStartDate(fmt(d));
+      setEndDate(fmt(now));
+    } else if (preset === '30days') {
+      const d = new Date();
+      d.setDate(d.getDate() - 29);
+      setStartDate(fmt(d));
+      setEndDate(fmt(now));
+    } else if (preset === 'this_month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      setStartDate(fmt(startOfMonth));
+      setEndDate(fmt(now));
+    }
+  };
+
+  // Reset all filters (global + per-graph)
   const handleResetFilter = () => {
+    setGlobalPreset('all');
     setStartDate('');
     setEndDate('');
+    setBranch('');
     setManager('');
     setStatus('');
+    setSource('');
+    setVelocityDays('7');
+    setVelocityManager('');
+    setVelocityStatus('');
+    setSourceTimeframe('');
+    setSourceManager('');
+    setFunnelTimeframe('');
+    setFunnelSource('');
+    setFunnelManager('');
+    setRecentStatus('');
+    setRecentSource('');
+    setPerformersTimeframe('');
+    setPerformersRole('');
     refetch();
   };
+
+  // Count active filters for badge
+  const activeFiltersCount = [
+    startDate,
+    endDate,
+    branch,
+    manager,
+    status,
+    source,
+    velocityManager,
+    velocityStatus,
+    sourceTimeframe,
+    sourceManager,
+    funnelTimeframe,
+    funnelSource,
+    funnelManager,
+    recentStatus,
+    recentSource,
+    performersTimeframe,
+    performersRole,
+  ].filter(Boolean).length;
 
   return (
     <CrmLayout>
       <div className="space-y-6 max-w-7xl pb-16">
-        {/* Top Header & Fast Action Row */}
+        {/* ========================================================= */}
+        {/* TOP WELCOME & FAST ACTION ROW                             */}
+        {/* ========================================================= */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-xl font-black text-slate-900 tracking-tight">Master Dashboard</h1>
+              {activeFiltersCount > 0 && (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-[#003884] border border-blue-200">
+                  {activeFiltersCount} Filters Active
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Real-time enterprise metrics, sales pipeline analysis, and lead velocity
+              Real-time enterprise metrics, multi-graph filtering, and sales pipeline analytics
             </p>
           </div>
 
@@ -128,7 +295,7 @@ const MasterDashboard: React.FC = () => {
         </div>
 
         {/* ========================================================= */}
-        {/* SECTION 1: TOP 6 METRICS CARDS (FULL WIDTH GRID)          */}
+        {/* SECTION 1: TOP 6 METRICS CARDS (3x2 COLORFUL GRID)         */}
         {/* ========================================================= */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {/* 1. Total Leads */}
@@ -270,7 +437,7 @@ const MasterDashboard: React.FC = () => {
               <span className="text-xs font-bold uppercase tracking-wider text-rose-900/80">Birthdays</span>
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center shadow-md shadow-rose-500/25 group-hover:scale-110 transition-transform">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
                 </svg>
               </div>
             </div>
@@ -289,49 +456,115 @@ const MasterDashboard: React.FC = () => {
         </div>
 
         {/* ========================================================= */}
-        {/* SECTION 2: LEADS INFLOW VELOCITY & FILTERS               */}
+        {/* SECTION 2: GLOBAL MASTER DASHBOARD FILTERS BAR            */}
         {/* ========================================================= */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-6">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 tracking-tight">Leads Inflow Velocity</h2>
-              <p className="text-xs text-slate-500">Daily incoming lead volume pattern across selected timeline</p>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#003884] flex items-center justify-center border border-blue-100">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Dashboard Intelligence Filters</h2>
+                <p className="text-[11px] text-slate-500">Universal filter criteria across all graphs, velocity & pipelines</p>
+              </div>
             </div>
+
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold px-3 py-1 rounded-lg bg-blue-50 text-[#003884] border border-blue-200">
-                Total Leads: {metrics.totalLeads}
-              </span>
+              {activeFiltersCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleResetFilter}
+                  className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs border border-rose-200 transition-colors cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Reset All Filters
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Filter Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-end">
+          {/* Quick Date Presets Row */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1">Timeframe:</span>
+            {[
+              { id: 'all', label: 'All Time' },
+              { id: 'today', label: 'Today' },
+              { id: '7days', label: 'Last 7 Days' },
+              { id: '30days', label: 'Last 30 Days' },
+              { id: 'this_month', label: 'This Month' },
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handlePresetChange(p.id as any)}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  globalPreset === p.id && (!startDate || p.id !== 'all')
+                    ? 'bg-[#003884] text-white shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/60'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 6-Column Filter Controls Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Start Date</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">From Date</label>
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setGlobalPreset('custom');
+                }}
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
               />
             </div>
+
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">End Date</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">To Date</label>
               <input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setGlobalPreset('custom');
+                }}
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
               />
             </div>
+
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Manager / Representative</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Branch</label>
+              <select
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
+              >
+                <option value="">All Branches</option>
+                {branchesList.map((b: any) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} ({b.city || 'HQ'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Representative</label>
               <select
                 value={manager}
                 onChange={(e) => setManager(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
               >
-                <option value="">All Representatives</option>
+                <option value="">All Counselors</option>
                 {managersList.map((m: any) => (
                   <option key={m.id} value={m.id}>
                     {m.name} ({m.role})
@@ -339,12 +572,13 @@ const MasterDashboard: React.FC = () => {
                 ))}
               </select>
             </div>
+
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Pipeline Status</label>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Pipeline Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
               >
                 <option value="">All Statuses</option>
                 {statusesList.map((st: any) => (
@@ -354,19 +588,92 @@ const MasterDashboard: React.FC = () => {
                 ))}
               </select>
             </div>
+
             <div>
-              <button
-                type="button"
-                onClick={handleResetFilter}
-                className="w-full py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer border border-slate-200"
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Lead Source</label>
+              <select
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20 focus:border-[#003884]"
               >
-                Reset Filters
-              </button>
+                <option value="">All Sources</option>
+                {allLeadSources.map((sName: string, idx: number) => (
+                  <option key={idx} value={sName}>
+                    {sName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* GRAPH 1: LEADS INFLOW VELOCITY WITH IN-CARD FILTERS       */}
+        {/* ========================================================= */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-3 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">Leads Inflow Velocity</h2>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-[#003884] border border-blue-200">
+                  {chartData.reduce((acc: number, c: any) => acc + (c.leads || 0), 0)} Leads in Range
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Daily incoming lead volume pattern across selected timeline</p>
+            </div>
+
+            {/* In-Card Quick Filters for Graph 1 */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Timeline Preset Selector */}
+              <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+                {(['7', '14', '30', '90'] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setVelocityDays(d)}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      velocityDays === d
+                        ? 'bg-white text-[#003884] shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {d}D
+                  </button>
+                ))}
+              </div>
+
+              {/* Counselor Filter */}
+              <select
+                value={velocityManager}
+                onChange={(e) => setVelocityManager(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20"
+              >
+                <option value="">All Counselors</option>
+                {managersList.map((m: any) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Status Filter */}
+              <select
+                value={velocityStatus}
+                onChange={(e) => setVelocityStatus(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003884]/20"
+              >
+                <option value="">All Statuses</option>
+                {statusesList.map((st: any) => (
+                  <option key={st.id} value={st.id}>
+                    {st.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
           {/* Area Chart with Real Data */}
-          <div className="h-64 w-full pt-2">
+          <div className="h-64 w-full pt-1">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
@@ -397,17 +704,46 @@ const MasterDashboard: React.FC = () => {
         {/* SECTION 3: LEAD SOURCE BREAKDOWN & PIPELINE STAGE FUNNEL  */}
         {/* ========================================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Lead Sources Donut Chart */}
+          {/* GRAPH 2: Lead Sources Donut Chart WITH IN-CARD FILTERS */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">Lead Source Attribution</h3>
                   <p className="text-[11px] text-slate-400">Incoming origin channels</p>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                  {leadSourceData.length} Channels
-                </span>
+
+                {/* In-Card Quick Filters for Graph 2 */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={sourceTimeframe}
+                    onChange={(e) => setSourceTimeframe(e.target.value)}
+                    className="px-2 py-1 text-xs rounded-lg border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none"
+                  >
+                    <option value="">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="7days">Last 7 Days</option>
+                    <option value="30days">Last 30 Days</option>
+                    <option value="this_month">This Month</option>
+                  </select>
+
+                  <select
+                    value={sourceManager}
+                    onChange={(e) => setSourceManager(e.target.value)}
+                    className="px-2 py-1 text-xs rounded-lg border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none"
+                  >
+                    <option value="">All Counselors</option>
+                    {managersList.map((m: any) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                    {leadSourceData.length} Channels
+                  </span>
+                </div>
               </div>
 
               <div className="h-56 w-full flex items-center justify-center">
@@ -450,13 +786,54 @@ const MasterDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Sales Pipeline Funnel (Bar Chart from real DB lead_statuses) */}
+          {/* GRAPH 3: Sales Pipeline Funnel WITH IN-CARD FILTERS */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">Pipeline Stage Conversion</h3>
                   <p className="text-[11px] text-slate-400">Current active leads across stages</p>
+                </div>
+
+                {/* In-Card Quick Filters for Graph 3 */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={funnelTimeframe}
+                    onChange={(e) => setFunnelTimeframe(e.target.value)}
+                    className="px-2 py-1 text-xs rounded-lg border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none"
+                  >
+                    <option value="">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="7days">Last 7 Days</option>
+                    <option value="30days">Last 30 Days</option>
+                    <option value="this_month">This Month</option>
+                  </select>
+
+                  <select
+                    value={funnelSource}
+                    onChange={(e) => setFunnelSource(e.target.value)}
+                    className="px-2 py-1 text-xs rounded-lg border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none"
+                  >
+                    <option value="">All Sources</option>
+                    {allLeadSources.map((sName: string, idx: number) => (
+                      <option key={idx} value={sName}>
+                        {sName}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={funnelManager}
+                    onChange={(e) => setFunnelManager(e.target.value)}
+                    className="px-2 py-1 text-xs rounded-lg border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none"
+                  >
+                    <option value="">All Counselors</option>
+                    {managersList.map((m: any) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -497,8 +874,10 @@ const MasterDashboard: React.FC = () => {
                 <span className="font-bold text-slate-900">{funnelData.length}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                <span className="text-slate-600 font-medium">Stage Leads:</span>
-                <span className="font-bold text-[#003884]">{metrics.totalLeads}</span>
+                <span className="text-slate-600 font-medium">Total Stage Leads:</span>
+                <span className="font-bold text-[#003884]">
+                  {funnelData.reduce((acc: number, f: any) => acc + (f.count || 0), 0)}
+                </span>
               </div>
             </div>
           </div>
@@ -508,20 +887,51 @@ const MasterDashboard: React.FC = () => {
         {/* SECTION 4: RECENT LEADS & TOP PERFORMERS                  */}
         {/* ========================================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Leads */}
+          {/* Recent Leads WITH IN-CARD FILTERS */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Recent Customer Inquiries</h3>
                 <p className="text-[11px] text-slate-400">Latest logged records in pipeline</p>
               </div>
-              <button
-                onClick={() => navigate('/crm/all-leads')}
-                className="text-xs text-[#003884] hover:text-blue-700 font-bold hover:underline cursor-pointer"
-              >
-                View All Leads →
-              </button>
+
+              {/* In-Card Quick Filters for Recent Leads */}
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={recentStatus}
+                  onChange={(e) => setRecentStatus(e.target.value)}
+                  className="px-2 py-1 text-xs rounded-lg border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none"
+                >
+                  <option value="">All Statuses</option>
+                  {statusesList.map((st: any) => (
+                    <option key={st.id} value={st.id}>
+                      {st.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={recentSource}
+                  onChange={(e) => setRecentSource(e.target.value)}
+                  className="px-2 py-1 text-xs rounded-lg border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none"
+                >
+                  <option value="">All Sources</option>
+                  {allLeadSources.map((sName: string, idx: number) => (
+                    <option key={idx} value={sName}>
+                      {sName}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => navigate('/crm/all-leads')}
+                  className="text-xs text-[#003884] hover:text-blue-700 font-bold hover:underline cursor-pointer ml-1"
+                >
+                  View All →
+                </button>
+              </div>
             </div>
+
             <div className="space-y-2.5">
               {recentLeads.length > 0 ? (
                 recentLeads.map((l: any) => (
@@ -548,25 +958,54 @@ const MasterDashboard: React.FC = () => {
                   </div>
                 ))
               ) : (
-                <div className="py-8 text-center text-xs text-slate-400">No leads found in database</div>
+                <div className="py-8 text-center text-xs text-slate-400">No leads found in database matching filter</div>
               )}
             </div>
           </div>
 
-          {/* Top Sales Team Performers */}
+          {/* Top Sales Team Performers WITH IN-CARD FILTERS */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Team Work Allocation</h3>
                 <p className="text-[11px] text-slate-400">Representatives & lead handling ratio</p>
               </div>
-              <button
-                onClick={() => navigate('/admin-users')}
-                className="text-xs text-[#003884] hover:text-blue-700 font-bold hover:underline cursor-pointer"
-              >
-                Manage Team →
-              </button>
+
+              {/* In-Card Quick Filters for Team Allocation */}
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={performersTimeframe}
+                  onChange={(e) => setPerformersTimeframe(e.target.value)}
+                  className="px-2 py-1 text-xs rounded-lg border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none"
+                >
+                  <option value="">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="7days">Last 7 Days</option>
+                  <option value="30days">Last 30 Days</option>
+                  <option value="this_month">This Month</option>
+                </select>
+
+                <select
+                  value={performersRole}
+                  onChange={(e) => setPerformersRole(e.target.value)}
+                  className="px-2 py-1 text-xs rounded-lg border border-slate-300 text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none"
+                >
+                  <option value="">All Roles</option>
+                  <option value="manager">Manager</option>
+                  <option value="sales_executive">Sales Executive</option>
+                  <option value="counselor">Counselor</option>
+                  <option value="admin">Admin</option>
+                </select>
+
+                <button
+                  onClick={() => navigate('/admin-users')}
+                  className="text-xs text-[#003884] hover:text-blue-700 font-bold hover:underline cursor-pointer ml-1"
+                >
+                  Manage Team →
+                </button>
+              </div>
             </div>
+
             <div className="space-y-2.5">
               {performers.length > 0 ? (
                 performers.map((rep: any, idx: number) => (
@@ -599,7 +1038,7 @@ const MasterDashboard: React.FC = () => {
 
         {/* Footer info */}
         <div className="pt-2 text-center text-xs text-slate-400">
-          DigiInk CRM Enterprise &bull; Production Workspace &bull; All data synced
+          DigiInk CRM Enterprise &bull; Production Analytics &bull; Real-time Database Synced
         </div>
       </div>
     </CrmLayout>

@@ -37,17 +37,9 @@ export class LeadsController {
   @Get('dashboard-metrics')
   async getDashboardMetrics(
     @CurrentDb() dbPool: Pool,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('managerId') managerId?: string,
-    @Query('statusId') statusId?: string,
+    @Query() query: any,
   ) {
-    const data = await this.leadsService.getDashboardMetrics(dbPool, {
-      startDate,
-      endDate,
-      managerId,
-      statusId,
-    });
+    const data = await this.leadsService.getDashboardMetrics(dbPool, query);
     return {
       data,
       message: 'Dashboard metrics fetched successfully',

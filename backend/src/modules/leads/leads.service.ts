@@ -683,35 +683,117 @@ export class LeadsService {
   }
 
   // GET /api/leads/dashboard-metrics - Real-time Database Dashboard Metrics & Charts
-  async getDashboardMetrics(pool: Pool, filters?: { startDate?: string; endDate?: string; managerId?: string; statusId?: string }) {
-    // Build conditional where clause for date, manager, and status filters
-    let whereClauses = ['1=1'];
-    const params: any[] = [];
-    let pIdx = 1;
+  async getDashboardMetrics(pool: Pool, filters?: {
+    startDate?: string;
+    endDate?: string;
+    managerId?: string;
+    statusId?: string;
+    branchId?: string;
+    source?: string;
+    velocityDays?: string;
+    velocityManagerId?: string;
+    velocityStatusId?: string;
+    sourceTimeframe?: string;
+    sourceManagerId?: string;
+    funnelSource?: string;
+    funnelManagerId?: string;
+    funnelTimeframe?: string;
+    recentStatusId?: string;
+    recentSource?: string;
+    performersTimeframe?: string;
+    performersRole?: string;
+  }) {
+    // Helper to calculate date ranges for presets
+    const getRange = (timeframe?: string) => {
+      if (!timeframe || timeframe === 'all') return { start: null, end: null };
+      const now = new Date();
+      const fmt = (d: Date) => d.toISOString().split('T')[0];
+      if (timeframe === 'today') {
+        const t = fmt(now);
+        return { start: t, end: t };
+      }
+      if (timeframe === '7days') {
+        const d = new Date();
+        d.setDate(d.getDate() - 6);
+        return { start: fmt(d), end: fmt(now) };
+      }
+      if (timeframe === '14days') {
+        const d = new Date();
+        d.setDate(d.getDate() - 13);
+        return { start: fmt(d), end: fmt(now) };
+      }
+      if (timeframe === '30days') {
+        const d = new Date();
+        d.setDate(d.getDate() - 29);
+        return { start: fmt(d), end: fmt(now) };
+      }
+      if (timeframe === '90days') {
+        const d = new Date();
+        d.setDate(d.getDate() - 89);
+        return { start: fmt(d), end: fmt(now) };
+      }
+      if (timeframe === 'this_month') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { start: fmt(startOfMonth), end: fmt(now) };
+      }
+      return { start: null, end: null };
+    };
 
-    if (filters?.startDate) {
-      whereClauses.push(`l.created_at >= $${pIdx++}`);
-      params.push(`${filters.startDate} 00:00:00`);
-    }
-    if (filters?.endDate) {
-      whereClauses.push(`l.created_at <= $${pIdx++}`);
-      params.push(`${filters.endDate} 23:59:59`);
-    }
-    if (filters?.managerId) {
-      whereClauses.push(`l.assigned_to = $${pIdx++}`);
-      params.push(filters.managerId);
-    }
-    if (filters?.statusId) {
-      whereClauses.push(`l.status_id = $${pIdx++}`);
-      params.push(filters.statusId);
-    }
+    // Helper to build parameterized WHERE clause for any slice
+    const buildLeadWhere = (opts: {
+      startDate?: string | null;
+      endDate?: string | null;
+      managerId?: string;
+      statusId?: string;
+      branchId?: string;
+      source?: string;
+    }) => {
+      const clauses: string[] = ['1=1'];
+      const p: any[] = [];
+      let idx = 1;
 
-    const whereSql = whereClauses.join(' AND ');
+      if (opts.startDate) {
+        clauses.push(`l.created_at >= $${idx++}`);
+        p.push(`${opts.startDate} 00:00:00`);
+      }
+      if (opts.endDate) {
+        clauses.push(`l.created_at <= $${idx++}`);
+        p.push(`${opts.endDate} 23:59:59`);
+      }
+      if (opts.managerId) {
+        clauses.push(`l.assigned_to = $${idx++}`);
+        p.push(opts.managerId);
+      }
+      if (opts.statusId) {
+        clauses.push(`l.status_id = $${idx++}`);
+        p.push(opts.statusId);
+      }
+      if (opts.branchId) {
+        clauses.push(`l.branch_id = $${idx++}`);
+        p.push(opts.branchId);
+      }
+      if (opts.source) {
+        clauses.push(`l.lead_from ILIKE $${idx++}`);
+        p.push(`%${opts.source}%`);
+      }
+
+      return { sql: clauses.join(' AND '), params: p };
+    };
+
+    // Global filters applied to top cards & KPIs
+    const globalWhere = buildLeadWhere({
+      startDate: filters?.startDate,
+      endDate: filters?.endDate,
+      managerId: filters?.managerId,
+      statusId: filters?.statusId,
+      branchId: filters?.branchId,
+      source: filters?.source,
+    });
 
     // 1. Total Leads matching filter
     const totalLeadsRes = await pool.query(
-      `SELECT count(*) FROM leads l WHERE ${whereSql}`,
-      params,
+      `SELECT count(*) FROM leads l WHERE ${globalWhere.sql}`,
+      globalWhere.params,
     );
     const totalLeads = parseInt(totalLeadsRes.rows[0]?.count || '0', 10);
 
@@ -755,59 +837,134 @@ export class LeadsService {
     `);
     const callStats = callsRes.rows[0];
 
-    // 6. Lead Flow Trend (Last 7 Days dynamic aggregation)
-    const trendRes = await pool.query(`
+    // =========================================================================
+    // 6. Lead Flow Trend (Graph 1: Leads Inflow Velocity with dynamic filters)
+    // =========================================================================
+    const vDays = parseInt(filters?.velocityDays || '7', 10) || 7;
+    let trendStart = filters?.startDate;
+    let trendEnd = filters?.endDate;
+
+    if (!trendStart || !trendEnd) {
+      const now = new Date();
+      const past = new Date();
+      past.setDate(now.getDate() - (vDays - 1));
+      trendStart = past.toISOString().split('T')[0];
+      trendEnd = now.toISOString().split('T')[0];
+    }
+
+    const trendManager = filters?.velocityManagerId || filters?.managerId;
+    const trendStatus = filters?.velocityStatusId || filters?.statusId;
+    const trendBranch = filters?.branchId;
+    const trendSource = filters?.source;
+
+    const trendLeadFilters: string[] = [];
+    const trendParams: any[] = [trendStart, trendEnd];
+    let tIdx = 3;
+
+    if (trendManager) {
+      trendLeadFilters.push(`AND l.assigned_to = $${tIdx++}`);
+      trendParams.push(trendManager);
+    }
+    if (trendStatus) {
+      trendLeadFilters.push(`AND l.status_id = $${tIdx++}`);
+      trendParams.push(trendStatus);
+    }
+    if (trendBranch) {
+      trendLeadFilters.push(`AND l.branch_id = $${tIdx++}`);
+      trendParams.push(trendBranch);
+    }
+    if (trendSource) {
+      trendLeadFilters.push(`AND l.lead_from ILIKE $${tIdx++}`);
+      trendParams.push(`%${trendSource}%`);
+    }
+
+    const trendSql = `
       WITH date_series AS (
-        SELECT generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day')::date AS day
+        SELECT generate_series($1::date, $2::date, '1 day')::date AS day
       )
       SELECT 
         TO_CHAR(ds.day, 'DD/MM') AS date,
         COUNT(l.id) AS leads
       FROM date_series ds
-      LEFT JOIN leads l ON DATE(l.created_at) = ds.day
+      LEFT JOIN leads l ON DATE(l.created_at) = ds.day ${trendLeadFilters.join(' ')}
       GROUP BY ds.day
       ORDER BY ds.day ASC
-    `);
+    `;
+    const trendRes = await pool.query(trendSql, trendParams);
 
-    // 7. Lead Sources Distribution (From DB)
+    // =========================================================================
+    // 7. Lead Sources Distribution (Graph 2: Lead Source Attribution Donut)
+    // =========================================================================
+    const srcRange = getRange(filters?.sourceTimeframe);
+    const srcWhere = buildLeadWhere({
+      startDate: srcRange.start || filters?.startDate,
+      endDate: srcRange.end || filters?.endDate,
+      managerId: filters?.sourceManagerId || filters?.managerId,
+      statusId: filters?.statusId,
+      branchId: filters?.branchId,
+      source: filters?.source,
+    });
+
     const sourcesRes = await pool.query(`
       SELECT 
-        COALESCE(NULLIF(l.lead_from, ''), 'Direct') AS name,
+        COALESCE(NULLIF(TRIM(l.lead_from), ''), 'Direct') AS name,
         COUNT(l.id) AS value
       FROM leads l
-      WHERE ${whereSql}
-      GROUP BY COALESCE(NULLIF(l.lead_from, ''), 'Direct')
+      WHERE ${srcWhere.sql}
+      GROUP BY COALESCE(NULLIF(TRIM(l.lead_from), ''), 'Direct')
       ORDER BY value DESC
-      LIMIT 6
-    `, params);
+      LIMIT 8
+    `, srcWhere.params);
 
-    const sourcePalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+    const sourcePalette = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#14b8a6', '#6366f1'];
     const leadSources = sourcesRes.rows.map((r, i) => ({
       name: r.name,
       value: parseInt(r.value, 10),
       color: sourcePalette[i % sourcePalette.length],
     }));
 
-    // 8. Conversion Pipeline Funnel (Dynamic by Lead Statuses)
+    // =========================================================================
+    // 8. Conversion Pipeline Funnel (Graph 3: Pipeline Stage Conversion Bar)
+    // =========================================================================
+    const fnlRange = getRange(filters?.funnelTimeframe);
+    const fnlWhere = buildLeadWhere({
+      startDate: fnlRange.start || filters?.startDate,
+      endDate: fnlRange.end || filters?.endDate,
+      managerId: filters?.funnelManagerId || filters?.managerId,
+      branchId: filters?.branchId,
+      source: filters?.funnelSource || filters?.source,
+    });
+
     const funnelRes = await pool.query(`
       SELECT 
         COALESCE(ls.name, 'Unassigned') AS stage,
-        COALESCE(ls.color, '#64748b') AS color,
+        COALESCE(ls.color, '#003884') AS color,
         COUNT(l.id) AS count
       FROM leads l
       LEFT JOIN lead_statuses ls ON ls.id = l.status_id
-      WHERE ${whereSql}
-      GROUP BY COALESCE(ls.name, 'Unassigned'), COALESCE(ls.color, '#64748b'), ls.sort_order
+      WHERE ${fnlWhere.sql}
+      GROUP BY COALESCE(ls.name, 'Unassigned'), COALESCE(ls.color, '#003884'), ls.sort_order
       ORDER BY COALESCE(ls.sort_order, 99) ASC, count DESC
-    `, params);
+    `, fnlWhere.params);
 
     const funnel = funnelRes.rows.map((r) => ({
       stage: r.stage,
       count: parseInt(r.count, 10),
-      color: r.color,
+      color: r.color || '#003884',
     }));
 
-    // 9. Recent Leads list (for quick table view / audit)
+    // =========================================================================
+    // 9. Recent Leads list (Recent Inquiries with status/source filter)
+    // =========================================================================
+    const rcntWhere = buildLeadWhere({
+      startDate: filters?.startDate,
+      endDate: filters?.endDate,
+      managerId: filters?.managerId,
+      statusId: filters?.recentStatusId || filters?.statusId,
+      branchId: filters?.branchId,
+      source: filters?.recentSource || filters?.source,
+    });
+
     const recentLeadsRes = await pool.query(`
       SELECT 
         l.id,
@@ -824,11 +981,45 @@ export class LeadsService {
       FROM leads l
       LEFT JOIN lead_statuses ls ON ls.id = l.status_id
       LEFT JOIN users u ON u.id = l.assigned_to
+      WHERE ${rcntWhere.sql}
       ORDER BY l.created_at DESC
       LIMIT 6
-    `);
+    `, rcntWhere.params);
 
-    // 10. Top Sales Team Performers based on leads handled
+    // =========================================================================
+    // 10. Top Sales Team Performers (Team Allocation with timeframe/role filter)
+    // =========================================================================
+    const perfRange = getRange(filters?.performersTimeframe);
+    const perfLeadClauses: string[] = [];
+    const perfParams: any[] = [];
+    let pfIdx = 1;
+
+    const pStart = perfRange.start || filters?.startDate;
+    const pEnd = perfRange.end || filters?.endDate;
+
+    if (pStart) {
+      perfLeadClauses.push(`AND l.created_at >= $${pfIdx++}`);
+      perfParams.push(`${pStart} 00:00:00`);
+    }
+    if (pEnd) {
+      perfLeadClauses.push(`AND l.created_at <= $${pfIdx++}`);
+      perfParams.push(`${pEnd} 23:59:59`);
+    }
+    if (filters?.statusId) {
+      perfLeadClauses.push(`AND l.status_id = $${pfIdx++}`);
+      perfParams.push(filters.statusId);
+    }
+    if (filters?.branchId) {
+      perfLeadClauses.push(`AND l.branch_id = $${pfIdx++}`);
+      perfParams.push(filters.branchId);
+    }
+
+    let perfRoleClause = '';
+    if (filters?.performersRole) {
+      perfRoleClause = `AND u.role = $${pfIdx++}`;
+      perfParams.push(filters.performersRole);
+    }
+
     const performersRes = await pool.query(`
       SELECT 
         u.id,
@@ -836,12 +1027,12 @@ export class LeadsService {
         u.role,
         COUNT(DISTINCT l.id) AS leads_handled
       FROM users u
-      LEFT JOIN leads l ON l.assigned_to = u.id
-      WHERE u.is_active = true
+      LEFT JOIN leads l ON l.assigned_to = u.id ${perfLeadClauses.join(' ')}
+      WHERE u.is_active = true ${perfRoleClause}
       GROUP BY u.id, u.name, u.role
       ORDER BY leads_handled DESC
       LIMIT 5
-    `);
+    `, perfParams);
 
     return {
       metrics: {

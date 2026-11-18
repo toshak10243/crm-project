@@ -128,8 +128,8 @@ const AddLeadPage: React.FC = () => {
       const current = Array.isArray(prev.custom_data?.[fieldName])
         ? [...prev.custom_data[fieldName]]
         : prev.custom_data?.[fieldName]
-        ? [prev.custom_data[fieldName]]
-        : [];
+          ? [prev.custom_data[fieldName]]
+          : [];
       const exists = current.includes(opt);
       const updated = exists ? current.filter((x: string) => x !== opt) : [...current, opt];
       return {
@@ -311,9 +311,8 @@ const AddLeadPage: React.FC = () => {
                                 setFormData((prev) => ({ ...prev, country_code: c.dialCode }));
                                 setCountryDropdownOpen(false);
                               }}
-                              className={`p-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${
-                                formData.country_code === c.dialCode ? 'bg-blue-50 text-blue-700 font-semibold' : 'hover:bg-slate-50 text-slate-700'
-                              }`}
+                              className={`p-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${formData.country_code === c.dialCode ? 'bg-blue-50 text-blue-700 font-semibold' : 'hover:bg-slate-50 text-slate-700'
+                                }`}
                             >
                               <div className="flex items-center gap-2">
                                 <span>{c.flag}</span>
@@ -531,8 +530,8 @@ const AddLeadPage: React.FC = () => {
                       const opts: string[] = Array.isArray(field.options)
                         ? field.options
                         : typeof field.options === 'string'
-                        ? field.options.split(',').map((s: string) => s.trim()).filter(Boolean)
-                        : [];
+                          ? field.options.split(',').map((s: string) => s.trim()).filter(Boolean)
+                          : [];
 
                       const val = formData.custom_data?.[field.name] ?? '';
 
@@ -672,7 +671,7 @@ const AddLeadPage: React.FC = () => {
           {/* Call Time Section */}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 space-y-6">
             <h3 className="text-base font-bold text-slate-900 tracking-tight">
-              Call Time
+              Follow Up
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
@@ -743,11 +742,10 @@ const AddLeadPage: React.FC = () => {
                               setFormData((prev) => ({ ...prev, assigned_to: c.id }));
                               setCounselorDropdownOpen(false);
                             }}
-                            className={`p-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${
-                              formData.assigned_to === c.id
+                            className={`p-2 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${formData.assigned_to === c.id
                                 ? 'bg-blue-50 text-blue-700 font-semibold'
                                 : 'text-slate-700 hover:bg-slate-50'
-                            }`}
+                              }`}
                           >
                             <span>{c.name}</span>
                             <span className="text-[10px] uppercase text-slate-400">{c.role}</span>
