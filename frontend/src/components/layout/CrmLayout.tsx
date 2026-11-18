@@ -90,32 +90,6 @@ export const CrmLayout: React.FC<{
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Dynamic Route Breadcrumb & Title Helper
-  const getPageInfo = () => {
-    const p = location.pathname.toLowerCase();
-    if (p.includes('branch')) return { breadcrumb: 'Branch', title: 'Branch' };
-    if (p.includes('form-field') || p.includes('formfield')) return { breadcrumb: 'Form Fields', title: 'Form Fields' };
-    if (p.includes('view-lead') || p.includes('viewlead')) return { breadcrumb: 'View Lead', title: 'View Lead' };
-    if (p.includes('add-lead') || p.includes('addlead')) return { breadcrumb: 'Add Lead', title: 'Add Lead' };
-    if (p.includes('all-followup') || p.includes('allfollowup')) return { breadcrumb: 'All Followup', title: 'All Followup' };
-    if (p.includes('today-followup') || p.endsWith('/followup') || p.includes('followup')) return { breadcrumb: 'Today Followup', title: 'Today Followup' };
-    if (p.includes('birthday')) return { breadcrumb: 'Birthdays', title: 'Birthdays' };
-    if (p.includes('all-leads') || p.includes('/lead')) return { breadcrumb: 'All Leads', title: 'All Leads' };
-    if (p.includes('incoming')) return { breadcrumb: 'Incoming Calls', title: 'Incoming Calls' };
-    if (p.includes('outgoing')) return { breadcrumb: 'Outgoing Calls', title: 'Outgoing Calls' };
-    if (p.includes('masters') || p.includes('admin-users/master')) return { breadcrumb: 'Master Admins', title: 'Master Admins' };
-    if (p.includes('admin-user') || p.includes('adminuser')) return { breadcrumb: 'Admin Users', title: 'Admin Users' };
-    if (p.includes('setting')) return { breadcrumb: 'Settings', title: 'Settings' };
-    if (p.includes('digimail')) return { breadcrumb: 'DigiMail', title: 'DigiMail Hub' };
-    if (p.includes('quotation')) return { breadcrumb: 'Quotations', title: 'Quotations' };
-    if (p.includes('invoice')) return { breadcrumb: 'Invoices', title: 'Invoices' };
-    if (p.includes('work-report')) return { breadcrumb: 'Work Report', title: 'Work Report' };
-    if (p.includes('change-password') || p.includes('changepassword')) return { breadcrumb: 'Change Password', title: 'Change Password' };
-    return { breadcrumb: 'Master Dashboard', title: 'Master Dashboard' };
-  };
-
-  const pageInfo = getPageInfo();
-
   return (
     <div className="flex h-screen w-full bg-[#f8fafc] text-slate-800 antialiased font-sans overflow-hidden">
       {/* Sidebar - Fixed Left */}
@@ -586,14 +560,7 @@ export const CrmLayout: React.FC<{
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#f8fafc]">
         {/* Top Navbar / Header with Fullscreen Button */}
-        <header className="h-14 flex-shrink-0 bg-transparent px-8 flex items-center justify-between">
-          {/* Subtle Clean Breadcrumb without duplicate large H1 */}
-          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 select-none">
-            <span className="text-slate-400">Pages</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-700 font-semibold">{pageInfo.breadcrumb}</span>
-          </div>
-
+        <header className="h-14 flex-shrink-0 bg-transparent px-8 flex items-center justify-end">
           {/* Right Action Icons & Profile Dropdown */}
           <div className="flex items-center gap-3 relative" ref={profileRef}>
             {/* Fullscreen Toggle Button (Placed before lock button) */}

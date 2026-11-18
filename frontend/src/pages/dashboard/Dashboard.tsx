@@ -130,132 +130,160 @@ const MasterDashboard: React.FC = () => {
         {/* ========================================================= */}
         {/* SECTION 1: TOP 6 METRICS CARDS (FULL WIDTH GRID)          */}
         {/* ========================================================= */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {/* 1. Total Leads */}
           <div
             onClick={() => navigate('/crm/all-leads')}
-            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-blue-300 cursor-pointer shadow-2xs group"
+            className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50/70 to-blue-100/60 border border-blue-200/90 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/15 hover:border-blue-400 cursor-pointer shadow-sm group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Leads</span>
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-[#003884] group-hover:text-white transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-900/80">Total Leads</span>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 group-hover:scale-110 transition-transform">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
             </div>
             <div className="mt-3">
-              <h3 className="text-2xl font-black text-slate-900">
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
                 {isLoading ? '...' : Number(metrics.totalLeads).toLocaleString()}
               </h3>
-              <p className="text-[10px] text-blue-600 font-semibold mt-0.5">Active database</p>
+              <div className="mt-2.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-800 border border-blue-200/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                  Active database
+                </span>
+              </div>
             </div>
           </div>
 
           {/* 2. Today's Followup */}
           <div
             onClick={() => navigate('/crm/today-followup')}
-            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-amber-300 cursor-pointer shadow-2xs group"
+            className="relative overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50/70 to-amber-100/60 border border-amber-200/90 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-500/15 hover:border-amber-400 cursor-pointer shadow-sm group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Today Followups</span>
-              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-900/80">Today Followups</span>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-500/25 group-hover:scale-110 transition-transform">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
             </div>
             <div className="mt-3">
-              <h3 className="text-2xl font-black text-slate-900">
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
                 {isLoading ? '...' : metrics.todayFollowup}
               </h3>
-              <p className="text-[10px] text-amber-600 font-semibold mt-0.5">Due today</p>
+              <div className="mt-2.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-800 border border-amber-200/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Due today
+                </span>
+              </div>
             </div>
           </div>
 
           {/* 3. All Followups */}
           <div
             onClick={() => navigate('/crm/all-followup')}
-            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-indigo-300 cursor-pointer shadow-2xs group"
+            className="relative overflow-hidden bg-gradient-to-br from-purple-50 via-violet-50/70 to-purple-100/60 border border-purple-200/90 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-purple-500/15 hover:border-purple-400 cursor-pointer shadow-sm group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">All Followups</span>
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <span className="text-xs font-bold uppercase tracking-wider text-purple-900/80">All Followups</span>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-600 to-violet-600 text-white flex items-center justify-center shadow-md shadow-purple-500/25 group-hover:scale-110 transition-transform">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
             </div>
             <div className="mt-3">
-              <h3 className="text-2xl font-black text-slate-900">
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
                 {isLoading ? '...' : metrics.allFollowup}
               </h3>
-              <p className="text-[10px] text-indigo-600 font-semibold mt-0.5">Scheduled tasks</p>
+              <div className="mt-2.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-500/15 text-purple-800 border border-purple-200/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
+                  Scheduled tasks
+                </span>
+              </div>
             </div>
           </div>
 
           {/* 4. Total Branches */}
           <div
             onClick={() => navigate('/master/branch')}
-            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-sky-300 cursor-pointer shadow-2xs group"
+            className="relative overflow-hidden bg-gradient-to-br from-cyan-50 via-sky-50/70 to-cyan-100/60 border border-cyan-200/90 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cyan-500/15 hover:border-cyan-400 cursor-pointer shadow-sm group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Branches</span>
-              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center group-hover:bg-sky-600 group-hover:text-white transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              <span className="text-xs font-bold uppercase tracking-wider text-cyan-900/80">Branches</span>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-600 to-teal-600 text-white flex items-center justify-center shadow-md shadow-cyan-500/25 group-hover:scale-110 transition-transform">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
             </div>
             <div className="mt-3">
-              <h3 className="text-2xl font-black text-slate-900">
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
                 {isLoading ? '...' : metrics.totalBranches}
               </h3>
-              <p className="text-[10px] text-sky-600 font-semibold mt-0.5">Enterprise units</p>
+              <div className="mt-2.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-800 border border-cyan-200/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-600"></span>
+                  Enterprise units
+                </span>
+              </div>
             </div>
           </div>
 
           {/* 5. Total Counselors */}
           <div
             onClick={() => navigate('/admin-users')}
-            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-emerald-300 cursor-pointer shadow-2xs group"
+            className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-teal-50/70 to-emerald-100/60 border border-emerald-200/90 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-500/15 hover:border-emerald-400 cursor-pointer shadow-sm group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Team / Reps</span>
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-900/80">Team / Reps</span>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 group-hover:scale-110 transition-transform">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </div>
             </div>
             <div className="mt-3">
-              <h3 className="text-2xl font-black text-slate-900">
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
                 {isLoading ? '...' : metrics.totalCounselors}
               </h3>
-              <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Active counselors</p>
+              <div className="mt-2.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-800 border border-emerald-200/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  Active counselors
+                </span>
+              </div>
             </div>
           </div>
 
           {/* 6. Today's Birthdays */}
           <div
             onClick={() => navigate('/crm/today-birthday')}
-            className="bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-md hover:border-purple-300 cursor-pointer shadow-2xs group"
+            className="relative overflow-hidden bg-gradient-to-br from-rose-50 via-pink-50/70 to-rose-100/60 border border-rose-200/90 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-rose-500/15 hover:border-rose-400 cursor-pointer shadow-sm group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Birthdays</span>
-              <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+              <span className="text-xs font-bold uppercase tracking-wider text-rose-900/80">Birthdays</span>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center shadow-md shadow-rose-500/25 group-hover:scale-110 transition-transform">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
                 </svg>
               </div>
             </div>
             <div className="mt-3">
-              <h3 className="text-2xl font-black text-slate-900">
+              <h3 className="text-3xl font-black text-slate-900 tracking-tight">
                 {isLoading ? '...' : metrics.todayBirthday}
               </h3>
-              <p className="text-[10px] text-purple-600 font-semibold mt-0.5">
-                {metrics.todayBirthday > 0 ? 'Wishes pending' : 'No birthdays today'}
-              </p>
+              <div className="mt-2.5">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-800 border border-rose-200/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                  {metrics.todayBirthday > 0 ? 'Wishes pending' : 'No birthdays today'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
