@@ -90,13 +90,13 @@ export class LeadsService {
           branch_id, gender, date_of_birth, city, address, lead_received_on,
           status_id, lead_from, campaign_id, remark, refer_by,
           custom_data, next_followup_date, followup_time_from, followup_time_to,
-          assigned_to, assigned_by, assigned_at, followup_remark, created_by
+          assigned_to, assigned_by, assigned_at, followup_remark, created_by, photo_url
         ) VALUES (
           $1, $2, $3, $4, $5, $6,
           $7, $8, $9, $10, $11, NOW(),
           $12, $13, $14, $15, $16,
           $17, $18, $19, $20,
-          $21, $22, CASE WHEN $21::uuid IS NOT NULL THEN NOW() ELSE NULL END, $23, $24
+          $21, $22, CASE WHEN $21::uuid IS NOT NULL THEN NOW() ELSE NULL END, $23, $24, $25
         ) RETURNING id, lead_number, name, phone, email, created_at
       `;
 
@@ -127,6 +127,7 @@ export class LeadsService {
         dto.assigned_to ? currentUserId : null,
         dto.followup_remark || null,
         currentUserId,
+        dto.photo_url || null,
       ];
 
       const res = await client.query(insertSql, params);

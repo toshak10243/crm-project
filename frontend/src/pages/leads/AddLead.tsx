@@ -37,11 +37,20 @@ const AddLeadPage: React.FC = () => {
     followup_time_to: '',
     assigned_to: '',
     followup_remark: '',
+    photo_url: '',
   };
 
   const [formData, setFormData] = useState(initialForm);
-  const [_photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoFileName, setPhotoFileName] = useState('');
+  const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [rawImage, setRawImage] = useState<string>('');
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropRotation, setCropRotation] = useState(0);
+  const [cropPan, setCropPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageObjRef = useRef<HTMLImageElement | null>(null);
 
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
@@ -142,12 +151,181 @@ const AddLeadPage: React.FC = () => {
     });
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Canvas cropper redraw
+  const drawCropCanvas = (
+    img: HTMLImageElement,
+    zoom: number,
+    pan: { x: number; y: number },
+    rotation: number
+  ) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const size = 320;
+    const center = size / 2;
+    const radius = 120; // 240px diameter circle
+
+    ctx.clearRect(0, 0, size, size);
+
+    // Draw dark background
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, size, size);
+
+    // Calculate base scale so image covers the 240px circle
+    const baseScale = Math.max((radius * 2) / img.naturalWidth, (radius * 2) / img.naturalHeight);
+
+    ctx.save();
+    ctx.translate(center + pan.x, center + pan.y);
+    ctx.rotate((rotation * Math.PI) / 180);
+    const s = baseScale * zoom;
+    ctx.scale(s, s);
+    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+    ctx.restore();
+
+    // Draw circular mask overlay (darkens area outside crop circle)
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
+    ctx.beginPath();
+    ctx.rect(0, 0, size, size);
+    ctx.arc(center, center, radius, 0, Math.PI * 2, true); // counter-clockwise cut out
+    ctx.fill();
+
+    // Circle border
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Dotted alignment grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(center, center - radius);
+    ctx.lineTo(center, center + radius);
+    ctx.moveTo(center - radius, center);
+    ctx.lineTo(center + radius, center);
+    ctx.stroke();
+
+    ctx.restore();
+  };
+
+  useEffect(() => {
+    if (!isCropModalOpen || !rawImage) return;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = rawImage;
+    img.onload = () => {
+      imageObjRef.current = img;
+      drawCropCanvas(img, cropZoom, cropPan, cropRotation);
+    };
+  }, [isCropModalOpen, rawImage, cropZoom, cropPan, cropRotation]);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setPhotoFile(file);
-      setPhotoFileName(file.name);
+      if (!file.type.startsWith('image/')) {
+        setErrorMsg('Please select a valid image file (PNG, JPG, WEBP).');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setRawImage(reader.result as string);
+        setCropZoom(1);
+        setCropPan({ x: 0, y: 0 });
+        setCropRotation(0);
+        setIsCropModalOpen(true);
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
     }
+  };
+
+  const handleApplyCrop = () => {
+    const img = imageObjRef.current;
+    if (!img) return;
+
+    const exportSize = 320;
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = exportSize;
+    exportCanvas.height = exportSize;
+    const ctx = exportCanvas.getContext('2d');
+    if (!ctx) return;
+
+    const center = exportSize / 2;
+    const radius = exportSize / 2;
+    const previewRadius = 120;
+    const ratio = radius / previewRadius;
+    const baseScale = Math.max((previewRadius * 2) / img.naturalWidth, (previewRadius * 2) / img.naturalHeight);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.translate(center + cropPan.x * ratio, center + cropPan.y * ratio);
+    ctx.rotate((cropRotation * Math.PI) / 180);
+    const s = baseScale * cropZoom * ratio;
+    ctx.scale(s, s);
+    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+    ctx.restore();
+
+    const croppedDataUrl = exportCanvas.toDataURL('image/png');
+    setPhotoPreview(croppedDataUrl);
+    setFormData((prev) => ({ ...prev, photo_url: croppedDataUrl }));
+    setIsCropModalOpen(false);
+  };
+
+  const handleRemovePhoto = () => {
+    setPhotoPreview('');
+    setRawImage('');
+    setFormData((prev) => ({ ...prev, photo_url: '' }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - cropPan.x, y: e.clientY - cropPan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging) return;
+    setCropPan({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - cropPan.x,
+        y: e.touches[0].clientY - cropPan.y,
+      });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    setCropPan({
+      x: e.touches[0].clientX - dragStart.x,
+      y: e.touches[0].clientY - dragStart.y,
+    });
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
   };
 
   // Create lead mutation
@@ -194,8 +372,8 @@ const AddLeadPage: React.FC = () => {
   // Complete clean reset (including photo and inputs)
   const confirmReset = () => {
     setFormData(initialForm);
-    setPhotoFile(null);
-    setPhotoFileName('');
+    setPhotoPreview('');
+    setRawImage('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -247,6 +425,118 @@ const AddLeadPage: React.FC = () => {
             </div>
 
             <div className="p-8 space-y-7">
+              {/* Lead Profile Photo (Circular Avatar with Crop) */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 rounded-2xl bg-gradient-to-r from-blue-50/70 via-indigo-50/30 to-slate-50 border border-blue-100/80">
+                {/* Circular Avatar Container */}
+                <div className="relative group flex-shrink-0">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-2 border-dashed border-blue-300 hover:border-[#003884] bg-white flex items-center justify-center cursor-pointer transition-all shadow-sm group-hover:shadow-md relative"
+                  >
+                    {photoPreview ? (
+                      <img
+                        src={photoPreview}
+                        alt="Lead Avatar Preview"
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-slate-400 group-hover:text-[#003884] transition-colors p-2 text-center">
+                        <svg className="w-8 h-8 sm:w-9 sm:h-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span className="text-[10px] font-bold mt-0.5">Upload Photo</span>
+                      </div>
+                    )}
+
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 bg-slate-900/40 text-white rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="text-[9px] font-bold mt-0.5">{photoPreview ? 'Change' : 'Crop & Add'}</span>
+                    </div>
+                  </div>
+
+                  {/* Floating Camera Button Badge */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload / Change Photo"
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-[#003884] text-white flex items-center justify-center shadow-md hover:bg-blue-700 transition-transform active:scale-95 cursor-pointer border-2 border-white"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Details & Actions */}
+                <div className="flex-1 text-center sm:text-left space-y-1.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">Lead Profile Photo</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Upload customer profile image. Circular cropping tool will open automatically.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-[#003884] text-white hover:bg-blue-800 transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span>{photoPreview ? 'Change Photo' : 'Upload Photo'}</span>
+                      </button>
+
+                      {rawImage && (
+                        <button
+                          type="button"
+                          onClick={() => setIsCropModalOpen(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
+                        >
+                          <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                          </svg>
+                          <span>Crop / Adjust</span>
+                        </button>
+                      )}
+
+                      {photoPreview && (
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          <span>Remove</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-slate-400">
+                    Supports JPG, PNG, WEBP. Max file size: 5MB.
+                  </p>
+                </div>
+
+                {/* Hidden File Input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/jpg"
+                  onChange={handlePhotoSelect}
+                  className="hidden"
+                />
+              </div>
+
               {/* Row 1: Branch, Phone with Country Selector, First Name, Middle Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <div>
@@ -760,33 +1050,17 @@ const AddLeadPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Followup Remark & Photo File Input */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-end">
-              <div className="lg:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Lead FollowUp Remark</label>
-                <input
-                  type="text"
-                  name="followup_remark"
-                  value={formData.followup_remark}
-                  onChange={handleChange}
-                  placeholder="Enter followup discussion notes..."
-                  className="w-full px-3.5 py-2 text-xs rounded-lg border border-slate-300 text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Photo</label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
-                />
-                {photoFileName && (
-                  <p className="text-[11px] text-blue-600 mt-1 truncate">Selected: {photoFileName}</p>
-                )}
-              </div>
+            {/* Followup Remark */}
+            <div className="pt-2 border-t border-slate-100">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Lead FollowUp Remark</label>
+              <input
+                type="text"
+                name="followup_remark"
+                value={formData.followup_remark}
+                onChange={handleChange}
+                placeholder="Enter followup discussion notes..."
+                className="w-full px-3.5 py-2 text-xs rounded-lg border border-slate-300 text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-600"
+              />
             </div>
 
             {/* Bottom Actions: Reset, Cancel, Save */}
@@ -843,6 +1117,127 @@ const AddLeadPage: React.FC = () => {
                   className="px-4 py-2 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white"
                 >
                   Yes, Reset All
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Interactive Photo Crop Modal */}
+        {isCropModalOpen && createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Crop Profile Photo</h3>
+                  <p className="text-xs text-slate-500">Drag image to position & use slider to zoom</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCropModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Interactive Canvas Area */}
+              <div className="flex justify-center select-none">
+                <canvas
+                  ref={canvasRef}
+                  width={320}
+                  height={320}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  className="rounded-xl shadow-md cursor-grab active:cursor-grabbing border border-slate-700 touch-none"
+                  style={{ width: '320px', height: '320px' }}
+                />
+              </div>
+
+              {/* Controls: Zoom slider & Rotate */}
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                    </svg>
+                    Zoom
+                  </span>
+                  <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                    <button
+                      type="button"
+                      onClick={() => setCropZoom((z) => Math.max(1, +(z - 0.1).toFixed(2)))}
+                      className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="0.05"
+                      value={cropZoom}
+                      onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                      className="w-full accent-blue-600 cursor-pointer"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCropZoom((z) => Math.min(3, +(z + 0.1).toFixed(2)))}
+                      className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-600 w-10 text-right">{cropZoom.toFixed(1)}x</span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setCropRotation((r) => (r + 90) % 360)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Rotate 90°</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCropZoom(1);
+                      setCropPan({ x: 0, y: 0 });
+                      setCropRotation(0);
+                    }}
+                    className="text-xs text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                  >
+                    Reset Position
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCropModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyCrop}
+                  className="px-5 py-2 text-xs font-bold rounded-xl bg-[#003884] hover:bg-blue-800 text-white shadow-sm transition-colors cursor-pointer"
+                >
+                  Crop & Save Photo
                 </button>
               </div>
             </div>

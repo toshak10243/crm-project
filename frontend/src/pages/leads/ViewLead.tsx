@@ -258,7 +258,15 @@ const ViewLeadPage: React.FC = () => {
                 <div className="flex items-start">
                   <span className="w-40 font-bold text-slate-800">Photo</span>
                   <span className="w-6 text-slate-400 font-bold">:</span>
-                  <span className="flex-1 text-slate-500 font-normal">{lead.photo_url || 'No photo uploaded'}</span>
+                  <div className="flex-1">
+                    {lead.photo_url ? (
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-blue-200 shadow-xs">
+                        <img src={lead.photo_url} alt={lead.name} className="w-full h-full object-cover rounded-full" />
+                      </div>
+                    ) : (
+                      <span className="text-slate-500 font-normal">No photo uploaded</span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-start">

@@ -106,5 +106,9 @@ export class CreateLeadDto {
   @IsOptional()
   @IsString()
   followup_remark?: string;
+
+  @IsOptional()
+  @IsString()
+  photo_url?: string;
 }
 
