@@ -420,6 +420,7 @@ const QuotationsPage: React.FC = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quotations-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       const saved = data?.data;
       Swal.fire({
         icon: 'success',
@@ -461,6 +462,7 @@ const QuotationsPage: React.FC = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['quotations-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       const invoice = data?.data?.invoice;
       Swal.fire({
         icon: 'success',
@@ -500,6 +502,7 @@ const QuotationsPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotations-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       Swal.fire({
         icon: 'success',
         title: 'Deleted',

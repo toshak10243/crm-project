@@ -168,7 +168,6 @@ export const FollowupsPage: React.FC<FollowupPageProps> = ({ todayOnly = false }
       const res = await api.get('/leads/options');
       return res.data?.data;
     },
-    staleTime: 5 * 60 * 1000,
   });
 
   const statuses = optionsData?.statuses || [];
@@ -288,7 +287,10 @@ export const FollowupsPage: React.FC<FollowupPageProps> = ({ todayOnly = false }
       setAlertMessage({ text: 'Follow-up updated successfully!', type: 'success' });
       setEditingLeadId(null);
       setEditFormData(null);
-      queryClient.invalidateQueries({ queryKey: [todayOnly ? 'today-followups' : 'all-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['today-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['all-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
     },
     onError: (err: any) => {
       setAlertMessage({ text: err.response?.data?.message || 'Failed to update follow-up', type: 'error' });
@@ -303,7 +305,10 @@ export const FollowupsPage: React.FC<FollowupPageProps> = ({ todayOnly = false }
     },
     onSuccess: () => {
       setAlertMessage({ text: 'Lead deleted successfully', type: 'success' });
-      queryClient.invalidateQueries({ queryKey: [todayOnly ? 'today-followups' : 'all-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['today-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['all-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
     },
   });
 

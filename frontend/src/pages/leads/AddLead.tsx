@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CrmLayout } from '../../components/layout/CrmLayout';
 import api from '../../lib/api';
 import { COUNTRIES } from '../../lib/countries';
 
 const AddLeadPage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initial Form State
@@ -216,6 +217,11 @@ const AddLeadPage: React.FC = () => {
   useEffect(() => {
     if (!isCropModalOpen || !rawImage) return;
 
+    if (imageObjRef.current && imageObjRef.current.src === rawImage) {
+      drawCropCanvas(imageObjRef.current, cropZoom, cropPan, cropRotation);
+      return;
+    }
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = rawImage;
@@ -345,11 +351,18 @@ const AddLeadPage: React.FC = () => {
       return res.data;
     },
     onSuccess: () => {
+      // Invalidate queries across CRM so that newly created lead shows immediately everywhere without manual browser refresh
+      queryClient.invalidateQueries({ queryKey: ['leads-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['today-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['all-followups'] });
+      queryClient.invalidateQueries();
+
       setSuccessMsg('Lead created successfully and saved in database!');
       setErrorMsg('');
       setTimeout(() => {
         navigate('/crm/all-leads');
-      }, 1200);
+      }, 700);
     },
     onError: (err: any) => {
       setErrorMsg(err.response?.data?.message || 'Failed to create lead. Please check required fields.');

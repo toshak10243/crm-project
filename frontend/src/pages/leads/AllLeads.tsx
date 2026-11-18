@@ -228,6 +228,9 @@ const AllLeadsPage: React.FC = () => {
       setSelectedLeadIds([]);
       setBulkModalType(null);
       queryClient.invalidateQueries({ queryKey: ['leads-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['today-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['all-followups'] });
     },
     onError: (err: any) => {
       setAlertMessage({ text: err.response?.data?.message || 'Bulk action failed', type: 'error' });
@@ -244,6 +247,9 @@ const AllLeadsPage: React.FC = () => {
       setAlertMessage({ text: 'Lead deleted successfully', type: 'success' });
       setActiveMenuId(null);
       queryClient.invalidateQueries({ queryKey: ['leads-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['today-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['all-followups'] });
     },
     onError: () => {
       setAlertMessage({ text: 'Failed to delete lead', type: 'error' });
@@ -335,6 +341,9 @@ const AllLeadsPage: React.FC = () => {
       setParsedLeads([]);
       setUploadFileName('');
       queryClient.invalidateQueries({ queryKey: ['leads-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['today-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['all-followups'] });
     },
     onError: (err: any) => {
       setUploadFileError(err.response?.data?.message || 'Failed to import leads');
@@ -398,6 +407,9 @@ const AllLeadsPage: React.FC = () => {
       setEditingLeadId(null);
       setEditFormData(null);
       queryClient.invalidateQueries({ queryKey: ['leads-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['today-followups'] });
+      queryClient.invalidateQueries({ queryKey: ['all-followups'] });
     },
     onError: (err: any) => {
       setAlertMessage({ text: err.response?.data?.message || 'Failed to update lead', type: 'error' });

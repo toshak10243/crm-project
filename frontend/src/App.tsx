@@ -5,13 +5,14 @@ import { router } from './router';
 import { SessionExpiredModal } from './components/common/SessionExpiredModal';
 import { SESSION_EXPIRED_EVENT } from './lib/api';
 
-// React Query client setup
+// React Query client setup - configured for instant live sync without manual browser refreshes
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      refetchOnWindowFocus: true, // Auto-refetch when tab is focused
+      refetchOnMount: 'always',   // Always fetch fresh data on navigation across all pages
+      staleTime: 0,               // 0ms stale time: never serve stale cached data when user enters new records
     },
   },
 });

@@ -64,7 +64,6 @@ const MasterDashboard: React.FC = () => {
       const res = await api.get('/leads/options');
       return res.data?.data;
     },
-    staleTime: 60 * 1000,
   });
 
   const branchesList = optionsData?.branches || [];
