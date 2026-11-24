@@ -24,7 +24,7 @@ async function bootstrap() {
     origin: configService.get('frontend.url'),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'Accept', 'Origin', 'X-Requested-With'],
   });
 
   // Global validation pipe — DTO validation automatically hogi

@@ -89,6 +89,11 @@ export class WaDaddyController {
   }
 
   // 4. CHAT (Conversations & Instant Messaging)
+  @Get('messages')
+  async getAllMessagesAlias(@CurrentDb() dbPool: Pool) {
+    return this.getChats(dbPool);
+  }
+
   @Get('chats')
   async getChats(@CurrentDb() dbPool: Pool) {
     const data = await this.waDaddyService.getChatThreads(dbPool);

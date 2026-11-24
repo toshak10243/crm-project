@@ -849,16 +849,23 @@ export class LeadsService {
     const counselorsRes = await pool.query(`SELECT count(*) FROM users WHERE is_active = true`);
     const totalCounselors = parseInt(counselorsRes.rows[0]?.count || '0', 10);
 
-    // 5. Total IVR Calls & durations
-    const callsRes = await pool.query(`
-      SELECT 
-        COUNT(*) AS total_calls,
-        COUNT(*) FILTER (WHERE call_type = 'incoming') AS incoming_calls,
-        COUNT(*) FILTER (WHERE call_type = 'outgoing') AS outgoing_calls,
-        COALESCE(SUM(NULLIF(regexp_replace(call_duration, '[^0-9]', '', 'g'), '')::int), 0) AS total_duration_seconds
-      FROM ivr_calls
-    `);
-    const callStats = callsRes.rows[0];
+    // 5. Total IVR Calls & durations (Safe fallback)
+    let callStats = { total_calls: 0, incoming_calls: 0, outgoing_calls: 0, total_duration_seconds: 0 };
+    try {
+      const callsRes = await pool.query(`
+        SELECT 
+          COUNT(*) AS total_calls,
+          COUNT(*) FILTER (WHERE call_type = 'incoming') AS incoming_calls,
+          COUNT(*) FILTER (WHERE call_type = 'outgoing') AS outgoing_calls,
+          COALESCE(SUM(NULLIF(regexp_replace(call_duration, '[^0-9]', '', 'g'), '')::int), 0) AS total_duration_seconds
+        FROM ivr_calls
+      `);
+      if (callsRes.rows[0]) {
+        callStats = callsRes.rows[0];
+      }
+    } catch {
+      // Graceful fallback if table is empty or uninitialized
+    }
 
     // =========================================================================
     // 6. Lead Flow Trend (Graph 1: Leads Inflow Velocity with dynamic filters)
@@ -1066,10 +1073,10 @@ export class LeadsService {
         todayBirthday,
         totalBranches,
         totalCounselors,
-        totalCalls: parseInt(callStats?.total_calls || '0', 10),
-        incomingCalls: parseInt(callStats?.incoming_calls || '0', 10),
-        outgoingCalls: parseInt(callStats?.outgoing_calls || '0', 10),
-        totalDurationSeconds: parseInt(callStats?.total_duration_seconds || '0', 10),
+        totalCalls: Number(callStats?.total_calls || 0),
+        incomingCalls: Number(callStats?.incoming_calls || 0),
+        outgoingCalls: Number(callStats?.outgoing_calls || 0),
+        totalDurationSeconds: Number(callStats?.total_duration_seconds || 0),
       },
       chartData: trendRes.rows.map(r => ({ date: r.date, leads: parseInt(r.leads, 10) })),
       leadSourceData: leadSources.length > 0 ? leadSources : [{ name: 'Direct', value: 0, color: '#3b82f6' }],

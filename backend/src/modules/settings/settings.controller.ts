@@ -22,10 +22,34 @@ export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   // 1. GET /api/settings/all - Get all setting masters
+  @Get()
+  async getIndexSettings(@CurrentDb() dbPool: Pool) {
+    return this.getAllSettings(dbPool);
+  }
+
   @Get('all')
   async getAllSettings(@CurrentDb() dbPool: Pool) {
     const data = await this.settingsService.getAll(dbPool);
     return { data, message: 'Settings fetched successfully' };
+  }
+
+  // Convenience GET sub-endpoints
+  @Get('lead-sources')
+  async getLeadSources(@CurrentDb() dbPool: Pool) {
+    const data = await this.settingsService.getAll(dbPool);
+    return { data: data.leadSources, message: 'Lead sources fetched successfully' };
+  }
+
+  @Get('lead-statuses')
+  async getLeadStatuses(@CurrentDb() dbPool: Pool) {
+    const data = await this.settingsService.getAll(dbPool);
+    return { data: data.statuses, message: 'Lead statuses fetched successfully' };
+  }
+
+  @Get('statuses')
+  async getStatusesAlias(@CurrentDb() dbPool: Pool) {
+    const data = await this.settingsService.getAll(dbPool);
+    return { data: data.statuses, message: 'Lead statuses fetched successfully' };
   }
 
   // 2. LEAD STATUSES

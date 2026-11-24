@@ -14,6 +14,25 @@ import { Pool } from 'pg';
 export class WorkReportController {
   constructor(private readonly workReportService: WorkReportService) {}
 
+  // 0. GET /api/work-report - Default report alias
+  @Get()
+  async getIndexReport(
+    @CurrentDb() dbPool: Pool,
+    @Query('date') date?: string,
+    @Query('managerId') managerId?: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10',
+  ) {
+    const data = await this.workReportService.getReportData(
+      dbPool,
+      date,
+      managerId,
+      parseInt(page, 10),
+      parseInt(limit, 10),
+    );
+    return { data, message: 'Work report data fetched successfully' };
+  }
+
   // 1. GET /api/work-report/managers - List all managers & sales reps
   @Get('managers')
   async getManagers(@CurrentDb() dbPool: Pool) {

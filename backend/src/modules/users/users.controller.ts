@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -55,10 +56,78 @@ export class UsersController {
     };
   }
 
+  // GET /api/users/counselors
+  @Get('counselors')
+  @Roles('admin', 'manager')
+  async getCounselors(@CurrentUser() user: any) {
+    const result = await this.usersService.getAllUsers(
+      user.dbName,
+      1,
+      100,
+      undefined,
+      undefined,
+      true,
+    );
+    return {
+      data: result.data,
+      message: 'Counselors fetched successfully',
+    };
+  }
+
+  // GET /api/users/roles
+  @Get('roles')
+  @Roles('admin', 'manager')
+  async getRoles() {
+    return {
+      data: [
+        { id: 'admin', name: 'Admin', label: 'Administrator' },
+        { id: 'manager', name: 'Manager', label: 'Branch Manager' },
+        { id: 'counselor', name: 'Counselor', label: 'Sales Counselor / Rep' },
+        { id: 'telecaller', name: 'Telecaller', label: 'Telecaller' },
+        { id: 'accountant', name: 'Accountant', label: 'Finance Accountant' },
+      ],
+      message: 'Roles fetched successfully',
+    };
+  }
+
+  // GET /api/users/departments/list
+  @Get('departments/list')
+  @Roles('admin', 'manager')
+  async getDepartments(@CurrentUser() user: any) {
+    const result = await this.usersService.getDepartments(user.dbName);
+    return {
+      data: result,
+      message: 'Departments fetched successfully',
+    };
+  }
+
+  // POST /api/users/departments
+  // Naya department create karo -- sirf Admin
+  @Post('departments')
+  @Roles('admin')
+  async createDepartment(
+    @CurrentUser() user: any,
+    @Body('name') name: string,
+    @Body('description') description?: string,
+  ) {
+    const result = await this.usersService.createDepartment(
+      user.dbName,
+      name,
+      description,
+    );
+    return {
+      data: result,
+      message: 'Department created successfully',
+    };
+  }
+
   // GET /api/users/:id
   @Get(':id')
   @Roles('admin', 'manager')
   async getUserById(@CurrentUser() user: any, @Param('id') id: string) {
+    if (!/^[0-9a-fA-F-]{36}$/.test(id)) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
     const result = await this.usersService.getUserById(user.dbName, id);
     return {
       data: result,
@@ -152,37 +221,6 @@ export class UsersController {
     return {
       data: null,
       message: result.message,
-    };
-  }
-
-  // GET /api/users/departments/list
-  @Get('departments/list')
-  @Roles('admin', 'manager')
-  async getDepartments(@CurrentUser() user: any) {
-    const result = await this.usersService.getDepartments(user.dbName);
-    return {
-      data: result,
-      message: 'Departments fetched successfully',
-    };
-  }
-
-  // POST /api/users/departments
-  // Naya department create karo -- sirf Admin
-  @Post('departments')
-  @Roles('admin')
-  async createDepartment(
-    @CurrentUser() user: any,
-    @Body('name') name: string,
-    @Body('description') description?: string,
-  ) {
-    const result = await this.usersService.createDepartment(
-      user.dbName,
-      name,
-      description,
-    );
-    return {
-      data: result,
-      message: 'Department created successfully',
     };
   }
 }

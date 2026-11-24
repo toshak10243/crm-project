@@ -18,6 +18,20 @@ import { Pool } from 'pg';
 export class IvrController {
   constructor(private readonly ivrService: IvrService) {}
 
+  // GET /api/ivr - Default alias
+  @Get()
+  @UseGuards(JwtGuard)
+  async getIvrDefault(@CurrentDb() dbPool: Pool, @Query() query: any) {
+    return this.getCalls(dbPool, query);
+  }
+
+  // GET /api/ivr/logs - Alias for logs
+  @Get('logs')
+  @UseGuards(JwtGuard)
+  async getIvrLogs(@CurrentDb() dbPool: Pool, @Query() query: any) {
+    return this.getCalls(dbPool, query);
+  }
+
   // GET /api/ivr/calls - Get call records (incoming or outgoing) from DB
   @Get('calls')
   @UseGuards(JwtGuard)
