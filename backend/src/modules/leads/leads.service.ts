@@ -87,8 +87,56 @@ export class LeadsService {
     };
   }
 
+  // Helper to extract clean digit phone number for comparison
+  normalizePhoneDigits(phone: string | null | undefined): string {
+    if (!phone) return '';
+    return String(phone).replace(/\D/g, '');
+  }
+
+  // Find duplicate lead by phone number (matching exact or last 10 digits)
+  async checkDuplicateLead(pool: Pool, phone: string, excludeLeadId?: string) {
+    const rawDigits = this.normalizePhoneDigits(phone);
+    if (!rawDigits || rawDigits.length < 5) return null;
+
+    // Last 10 digits (to catch +91 / 0 prefix variations)
+    const last10 = rawDigits.length > 10 ? rawDigits.slice(-10) : rawDigits;
+
+    let sql = `
+      SELECT id, lead_number, name, phone, email, created_at, is_deleted
+      FROM leads
+      WHERE is_deleted = false
+        AND (
+          phone = $1
+          OR RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = $2
+        )
+    `;
+    const params: any[] = [phone.trim(), last10];
+
+    if (excludeLeadId && this.isValidUuid(excludeLeadId)) {
+      sql += ` AND id != $3`;
+      params.push(excludeLeadId);
+    }
+
+    sql += ` ORDER BY created_at DESC LIMIT 1`;
+
+    const res = await pool.query(sql, params);
+    return res.rows[0] || null;
+  }
+
   // Create new lead with full fields & followup activity
   async createLead(pool: Pool, dto: CreateLeadDto, currentUserId: string) {
+    const fullPhone = dto.country_code ? `${dto.country_code} ${dto.phone}`.trim() : dto.phone;
+
+    // Check for duplicate phone
+    if (fullPhone) {
+      const existing = await this.checkDuplicateLead(pool, fullPhone);
+      if (existing) {
+        throw new BadRequestException(
+          `Lead already exists with this phone number (${existing.phone}) as "${existing.name}" (Lead #${existing.lead_number}). Duplicate leads are not allowed.`
+        );
+      }
+    }
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -560,6 +608,15 @@ export class LeadsService {
 
         const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ').trim() || 'Lead';
 
+        // Check if phone already exists to avoid importing duplicates
+        if (phone && phone !== 'N/A') {
+          const dup = await this.checkDuplicateLead(client as any, phone);
+          if (dup) {
+            // Skip duplicate row
+            continue;
+          }
+        }
+
         const insertSql = `
           INSERT INTO leads (
             name, first_name, middle_name, last_name, phone, email,
@@ -735,6 +792,17 @@ export class LeadsService {
       `;
 
       const finalPhone = pickStr('phone', old.phone) || old.phone;
+
+      // Duplicate phone check on update (if phone changed)
+      if (finalPhone && finalPhone !== old.phone) {
+        const existing = await this.checkDuplicateLead(pool, finalPhone, leadId);
+        if (existing) {
+          throw new BadRequestException(
+            `Another lead already exists with this phone number (${existing.phone}) as "${existing.name}" (Lead #${existing.lead_number}).`
+          );
+        }
+      }
+
       const finalCity = pickStr('city', old.city);
       const finalLeadFrom = pickStr('lead_from', old.lead_from);
       const finalRemark = pickStr('remark', old.remark);

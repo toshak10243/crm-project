@@ -2063,6 +2063,20 @@ const AllLeadsPage: React.FC = () => {
 
             {/* Scrollable Form Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
+              {/* Edit Modal Error Alert */}
+              {editModalError && (
+                <div className="p-3.5 rounded-lg bg-rose-50 text-rose-800 border border-rose-200 text-xs font-semibold flex items-center justify-between">
+                  <span>{editModalError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setEditModalError(null)}
+                    className="text-xs uppercase font-bold px-1 hover:opacity-75"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* Lead Profile Photo (Circular Avatar with Crop / Upload) */}
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
                 <div className="relative group">

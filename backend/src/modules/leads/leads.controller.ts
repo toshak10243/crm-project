@@ -23,6 +23,23 @@ import { Pool } from 'pg';
 export class LeadsController {
   constructor(private readonly leadsService: LeadsService) {}
 
+  // GET /api/leads/check-duplicate?phone=+919876543210&excludeLeadId=...
+  @Get('check-duplicate')
+  async checkDuplicate(
+    @CurrentDb() dbPool: Pool,
+    @Query('phone') phone: string,
+    @Query('excludeLeadId') excludeLeadId?: string,
+  ) {
+    if (!phone || !phone.trim()) {
+      return { duplicate: false, lead: null };
+    }
+    const match = await this.leadsService.checkDuplicateLead(dbPool, phone.trim(), excludeLeadId);
+    return {
+      duplicate: !!match,
+      lead: match || null,
+    };
+  }
+
   // GET /api/leads/options - Fetch dropdown masters for lead form & filters
   @Get('options')
   async getOptions(@CurrentDb() dbPool: Pool) {

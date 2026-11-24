@@ -231,6 +231,42 @@ const AddLeadPage: React.FC = () => {
     };
   }, [isCropModalOpen, rawImage, cropZoom, cropPan, cropRotation]);
 
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
+
+  // Debounced check for duplicate phone number
+  useEffect(() => {
+    const rawDigits = formData.phone.replace(/\D/g, '');
+    if (rawDigits.length < 5) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setCheckingDuplicate(true);
+        const fullPhone = `${formData.country_code || '+91'} ${formData.phone}`.trim();
+        const res = await api.get('/leads/check-duplicate', {
+          params: { phone: fullPhone },
+        });
+        if (res.data?.duplicate && res.data?.lead) {
+          const l = res.data.lead;
+          setDuplicateWarning(
+            `⚠️ Already lead exist with this number (${l.phone}) as "${l.name}" (Lead #${l.lead_number})!`
+          );
+        } else {
+          setDuplicateWarning(null);
+        }
+      } catch (e) {
+        // ignore check errors
+      } finally {
+        setCheckingDuplicate(false);
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [formData.phone, formData.country_code]);
+
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -405,6 +441,11 @@ const AddLeadPage: React.FC = () => {
 
     if (!formData.first_name.trim() || !formData.phone.trim()) {
       setErrorMsg('First Name and Phone Number are required.');
+      return;
+    }
+
+    if (duplicateWarning) {
+      setErrorMsg(duplicateWarning);
       return;
     }
 
@@ -657,6 +698,15 @@ const AddLeadPage: React.FC = () => {
                       </div>
                     )}
                   </div>
+                  {/* Duplicate Phone Alert Indicator */}
+                  {checkingDuplicate && (
+                    <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">Checking duplicate...</p>
+                  )}
+                  {duplicateWarning && (
+                    <div className="mt-1.5 p-2 rounded-md bg-amber-50 border border-amber-300 text-amber-900 text-[11px] font-medium leading-tight shadow-2xs animate-in fade-in">
+                      {duplicateWarning}
+                    </div>
+                  )}
                 </div>
 
                 <div>
