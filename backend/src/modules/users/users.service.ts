@@ -256,14 +256,14 @@ export class UsersService {
       }
 
       if (dto.branchId !== undefined) {
-        updates.push(`branch_id = ${paramCount}`);
+        updates.push(`branch_id = $${paramCount}`);
         params.push(dto.branchId || null);
         paramCount++;
       }
 
       if (dto.password) {
         const newHash = await bcrypt.hash(dto.password, 10);
-        updates.push(`password_hash = ${paramCount}`);
+        updates.push(`password_hash = $${paramCount}`);
         params.push(newHash);
         paramCount++;
       }
