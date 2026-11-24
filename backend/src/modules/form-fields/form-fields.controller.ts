@@ -70,6 +70,24 @@ export class FormFieldsController {
     const isRequired = !!body.required;
     const defaultValue = body.default_value && body.default_value.trim() ? body.default_value.trim() : null;
 
+    // Check for duplicate name or label (case-insensitive) among active fields
+    const dupCheck = await dbPool.query(
+      `SELECT id, field_name, field_label FROM custom_fields 
+       WHERE is_active = true 
+         AND (LOWER(TRIM(field_name)) = LOWER($1) OR LOWER(TRIM(field_label)) = LOWER($2))`,
+      [fieldName, fieldLabel],
+    );
+
+    if (dupCheck.rows.length > 0) {
+      const match = dupCheck.rows[0];
+      if (match.field_name.toLowerCase() === fieldName.toLowerCase()) {
+        throw new BadRequestException(`A form field with name "${fieldName}" already exists. Field names must be unique.`);
+      }
+      if (match.field_label.toLowerCase() === fieldLabel.toLowerCase()) {
+        throw new BadRequestException(`A form field with label "${fieldLabel}" already exists. Field labels must be unique.`);
+      }
+    }
+
     // Parse options if provided
     let optionsJson: string | null = null;
     if (['select', 'checkbox', 'radio'].includes(inputType)) {
@@ -151,6 +169,29 @@ export class FormFieldsController {
       body.default_value !== undefined
         ? body.default_value.trim() || null
         : current.default_value;
+
+    if (!fieldName) {
+      throw new BadRequestException('Field name cannot be empty');
+    }
+
+    // Check for duplicate name or label among OTHER active fields
+    const dupCheck = await dbPool.query(
+      `SELECT id, field_name, field_label FROM custom_fields 
+       WHERE is_active = true 
+         AND id != $1
+         AND (LOWER(TRIM(field_name)) = LOWER($2) OR LOWER(TRIM(field_label)) = LOWER($3))`,
+      [id, fieldName, fieldLabel],
+    );
+
+    if (dupCheck.rows.length > 0) {
+      const match = dupCheck.rows[0];
+      if (match.field_name.toLowerCase() === fieldName.toLowerCase()) {
+        throw new BadRequestException(`A form field with name "${fieldName}" already exists. Field names must be unique.`);
+      }
+      if (match.field_label.toLowerCase() === fieldLabel.toLowerCase()) {
+        throw new BadRequestException(`A form field with label "${fieldLabel}" already exists. Field labels must be unique.`);
+      }
+    }
 
     let optionsJson = current.options;
     if (body.options !== undefined) {

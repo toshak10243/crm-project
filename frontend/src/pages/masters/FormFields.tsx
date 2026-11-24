@@ -43,6 +43,7 @@ export const FormFieldsPage: React.FC = () => {
 
   // Notification state
   const [alertMessage, setAlertMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   // Fetch form fields from real database
   const { data: fieldsData, isLoading } = useQuery({
@@ -64,6 +65,7 @@ export const FormFieldsPage: React.FC = () => {
     setOptionsStr('');
     setDefaultValue('');
     setActiveField(null);
+    setModalError(null);
   };
 
   const openAddModal = () => {
@@ -107,8 +109,10 @@ export const FormFieldsPage: React.FC = () => {
       closeModal();
     },
     onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to create form field';
+      setModalError(msg);
       setAlertMessage({
-        text: err.response?.data?.message || 'Failed to create form field',
+        text: msg,
         type: 'error',
       });
     },
@@ -127,8 +131,10 @@ export const FormFieldsPage: React.FC = () => {
       closeModal();
     },
     onError: (err: any) => {
+      const msg = err.response?.data?.message || 'Failed to update form field';
+      setModalError(msg);
       setAlertMessage({
-        text: err.response?.data?.message || 'Failed to update form field',
+        text: msg,
         type: 'error',
       });
     },
@@ -161,14 +167,41 @@ export const FormFieldsPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fieldName.trim()) {
-      alert('Please enter a field name');
+    setModalError(null);
+
+    const trimmedName = fieldName.trim();
+    const trimmedLabel = fieldLabel.trim() || trimmedName;
+
+    if (!trimmedName) {
+      setModalError('Please enter a field name');
+      return;
+    }
+
+    // Check duplicate name
+    const dupName = fields.find(
+      (f) =>
+        f.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
+        (modalMode === 'add' || f.id !== activeField?.id)
+    );
+    if (dupName) {
+      setModalError(`A field with name "${trimmedName}" already exists. Field names must be unique.`);
+      return;
+    }
+
+    // Check duplicate label
+    const dupLabel = fields.find(
+      (f) =>
+        (f.label || f.name).trim().toLowerCase() === trimmedLabel.toLowerCase() &&
+        (modalMode === 'add' || f.id !== activeField?.id)
+    );
+    if (dupLabel) {
+      setModalError(`A field with label "${trimmedLabel}" already exists. Field labels must be unique.`);
       return;
     }
 
     const payload: any = {
-      name: fieldName.trim(),
-      label: fieldLabel.trim() || fieldName.trim(),
+      name: trimmedName,
+      label: trimmedLabel,
       input_type: inputType,
       required: isRequired,
       default_value: defaultValue.trim() || null,
@@ -361,6 +394,19 @@ export const FormFieldsPage: React.FC = () => {
 
               {/* Form Body */}
               <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
+                {modalError && (
+                  <div className="p-3 rounded-lg bg-rose-50 text-rose-800 border border-rose-200 text-xs font-semibold flex items-center justify-between">
+                    <span>{modalError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setModalError(null)}
+                      className="text-xs uppercase font-bold px-1 hover:opacity-75"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
                 {/* Name */}
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1.5">Name</label>
