@@ -936,16 +936,29 @@ const MasterDashboard: React.FC = () => {
                 recentLeads.map((l: any) => (
                   <div
                     key={l.id}
-                    onClick={() => navigate(`/crm/view-lead/${l.id}`)}
+                    onClick={() => navigate(`/master/viewLead/${l.id}`)}
                     className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-blue-50/50 border border-slate-100 transition-colors cursor-pointer text-xs"
                   >
-                    <div>
-                      <div className="font-semibold text-slate-900">
-                        {l.name}{' '}
-                        {l.city && <span className="font-normal text-slate-400 text-[11px]">({l.city})</span>}
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        {l.phone || 'No Phone'} • <span className="text-slate-600 font-medium">{l.lead_from || 'Direct'}</span>
+                    <div className="flex items-center gap-2.5">
+                      {l.photo_url ? (
+                        <img
+                          src={l.photo_url}
+                          alt={l.name}
+                          className="w-8 h-8 rounded-full object-cover border border-blue-200 shadow-2xs flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center flex-shrink-0 border border-blue-200/60">
+                          {l.name ? l.name.charAt(0).toUpperCase() : 'L'}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-semibold text-slate-900">
+                          {l.name}{' '}
+                          {l.city && <span className="font-normal text-slate-400 text-[11px]">({l.city})</span>}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          {l.phone || 'No Phone'} • <span className="text-slate-600 font-medium">{l.lead_from || 'Direct'}</span>
+                        </div>
                       </div>
                     </div>
                     <span

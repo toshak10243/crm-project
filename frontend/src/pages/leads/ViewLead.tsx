@@ -106,7 +106,39 @@ const ViewLeadPage: React.FC = () => {
         </div>
 
         {/* Clean Container Card */}
-        <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-xs">
+        <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-xs space-y-6">
+          {/* Top Profile Banner with Photo & Status */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-slate-100">
+            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-blue-400/60 shadow-md flex-shrink-0 bg-slate-50 flex items-center justify-center">
+              {lead.photo_url ? (
+                <img src={lead.photo_url} alt={lead.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-black text-2xl flex items-center justify-center">
+                  {lead.name ? lead.name.charAt(0).toUpperCase() : 'L'}
+                </div>
+              )}
+            </div>
+            <div className="flex-1 text-center sm:text-left space-y-1.5">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                <h1 className="text-xl font-black text-slate-900 tracking-tight">{lead.name}</h1>
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-xs font-bold text-white shadow-2xs"
+                  style={{ backgroundColor: lead.status_color || '#3b82f6' }}
+                >
+                  {lead.status_name || 'NEW'}
+                </span>
+                {lead.lead_number && (
+                  <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                    #{lead.lead_number}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500">
+                {lead.phone} {lead.email ? `• ${lead.email}` : ''} {lead.city ? `• ${lead.city}` : ''}
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
             {/* Left Column: User Details: */}
             <div>

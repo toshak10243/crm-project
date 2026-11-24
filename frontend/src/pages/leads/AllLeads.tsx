@@ -33,6 +33,7 @@ interface LeadRecord {
   followup_time_from?: string;
   followup_time_to?: string;
   followup_remark?: string;
+  photo_url?: string;
   status_name?: string;
   status_color?: string;
   assigned_to_name?: string;
@@ -156,6 +157,164 @@ const AllLeadsPage: React.FC = () => {
   const [emailLead, setEmailLead] = useState<LeadRecord | null>(null);
   const [selectedEmailTemplateId, setSelectedEmailTemplateId] = useState('');
   const [customEmailMessage, setCustomEmailMessage] = useState('');
+
+  // Profile Photo Cropper & Quick Upload states
+  const [targetPhotoLeadId, setTargetPhotoLeadId] = useState<string | null>(null);
+  const [rawCropImage, setRawCropImage] = useState<string>('');
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropRotation, setCropRotation] = useState(0);
+  const [cropPan, setCropPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const cropCanvasRef = useRef<HTMLCanvasElement>(null);
+  const cropImageObjRef = useRef<HTMLImageElement | null>(null);
+  const quickFileInputRef = useRef<HTMLInputElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Redraw photo crop canvas
+  const drawCropCanvas = (
+    img: HTMLImageElement,
+    zoom: number,
+    pan: { x: number; y: number },
+    rotation: number
+  ) => {
+    const canvas = cropCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const size = 320;
+    const center = size / 2;
+    const radius = 120; // 240px circular mask
+
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, size, size);
+
+    const baseScale = Math.max((radius * 2) / img.naturalWidth, (radius * 2) / img.naturalHeight);
+
+    ctx.save();
+    ctx.translate(center + pan.x, center + pan.y);
+    ctx.rotate((rotation * Math.PI) / 180);
+    const s = baseScale * zoom;
+    ctx.scale(s, s);
+    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+    ctx.restore();
+
+    // Dark overlay outside circle
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
+    ctx.beginPath();
+    ctx.rect(0, 0, size, size);
+    ctx.arc(center, center, radius, 0, Math.PI * 2, true);
+    ctx.fill();
+
+    // Circle border
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Alignment guides
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(center, center - radius);
+    ctx.lineTo(center, center + radius);
+    ctx.moveTo(center - radius, center);
+    ctx.lineTo(center + radius, center);
+    ctx.stroke();
+    ctx.restore();
+  };
+
+  useEffect(() => {
+    if (!isCropModalOpen || !rawCropImage) return;
+
+    if (cropImageObjRef.current && cropImageObjRef.current.src === rawCropImage) {
+      drawCropCanvas(cropImageObjRef.current, cropZoom, cropPan, cropRotation);
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = rawCropImage;
+    img.onload = () => {
+      cropImageObjRef.current = img;
+      drawCropCanvas(img, cropZoom, cropPan, cropRotation);
+    };
+  }, [isCropModalOpen, rawCropImage, cropZoom, cropPan, cropRotation]);
+
+  const handlePhotoFileSelect = (file: File, leadId?: string) => {
+    if (!file.type.startsWith('image/')) {
+      setAlertMessage({ text: 'Please select a valid image file', type: 'error' });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setAlertMessage({ text: 'Image file size should be less than 8MB', type: 'error' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setRawCropImage(reader.result as string);
+      setTargetPhotoLeadId(leadId || null);
+      setCropZoom(1);
+      setCropPan({ x: 0, y: 0 });
+      setCropRotation(0);
+      setIsCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleApplyCrop = () => {
+    const img = cropImageObjRef.current;
+    if (!img) return;
+
+    const exportSize = 320;
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = exportSize;
+    exportCanvas.height = exportSize;
+    const ctx = exportCanvas.getContext('2d');
+    if (!ctx) return;
+
+    const center = exportSize / 2;
+    const radius = exportSize / 2;
+    const previewRadius = 120;
+    const ratio = radius / previewRadius;
+    const baseScale = Math.max((previewRadius * 2) / img.naturalWidth, (previewRadius * 2) / img.naturalHeight);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    ctx.translate(center + cropPan.x * ratio, center + cropPan.y * ratio);
+    ctx.rotate((cropRotation * Math.PI) / 180);
+    const s = baseScale * cropZoom * ratio;
+    ctx.scale(s, s);
+    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+    ctx.restore();
+
+    const croppedDataUrl = exportCanvas.toDataURL('image/png');
+
+    // If updating within Edit Lead modal
+    if (editingLeadId && editFormData) {
+      setEditFormData((prev: any) => ({ ...prev, photo_url: croppedDataUrl }));
+    }
+
+    // If updating directly from lead card click
+    if (targetPhotoLeadId) {
+      updateLeadMutation.mutate({
+        id: targetPhotoLeadId,
+        payload: { photo_url: croppedDataUrl },
+      });
+      setAlertMessage({ text: 'Lead photo updated successfully!', type: 'success' });
+    }
+
+    setIsCropModalOpen(false);
+  };
 
   // Debounce search input
   useEffect(() => {
@@ -366,6 +525,7 @@ const AllLeadsPage: React.FC = () => {
         first_name: data.first_name || '',
         middle_name: data.middle_name || '',
         last_name: data.last_name || '',
+        photo_url: data.photo_url || '',
         email: data.email || '',
         gender: data.gender || '',
         date_of_birth: data.date_of_birth ? data.date_of_birth.slice(0, 10) : '',
@@ -945,13 +1105,40 @@ const AllLeadsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Customer / Company Title with blue user icon */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                      </svg>
-                    </span>
+                  {/* Customer / Company Title with circular photo or avatar icon */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className="relative group cursor-pointer flex-shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTargetPhotoLeadId(lead.id);
+                        quickFileInputRef.current?.click();
+                      }}
+                      title="Click to view or upload photo"
+                    >
+                      {lead.photo_url ? (
+                        <img
+                          src={lead.photo_url}
+                          alt={lead.name}
+                          className="w-10 h-10 rounded-full object-cover border-2 border-blue-400/60 shadow-xs group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <span className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-extrabold text-sm flex items-center justify-center flex-shrink-0 shadow-xs border border-blue-300/40 group-hover:scale-105 transition-transform">
+                          {lead.name ? lead.name.charAt(0).toUpperCase() : (
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </span>
+                      )}
+                      {/* Hover Camera Overlay Badge */}
+                      <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-slate-900/85 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xs" title="Upload Photo">
+                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        </svg>
+                      </span>
+                    </div>
+
                     <h3
                       className="text-base font-bold text-[#0b3b75] hover:underline cursor-pointer tracking-tight"
                       onClick={() => navigate(`/master/viewLead/${lead.id}`)}
@@ -1865,6 +2052,72 @@ const AllLeadsPage: React.FC = () => {
 
             {/* Scrollable Form Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
+              {/* Lead Profile Photo (Circular Avatar with Crop / Upload) */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div className="relative group">
+                  <div className="w-20 h-20 rounded-full overflow-hidden bg-white border-2 border-dashed border-slate-300 flex items-center justify-center shadow-xs">
+                    {editFormData.photo_url ? (
+                      <img
+                        src={editFormData.photo_url}
+                        alt="Lead Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-slate-400">
+                        <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span className="text-[10px] font-bold mt-0.5">No Photo</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 text-center sm:text-left space-y-2">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Lead Profile Photo</h4>
+                    <p className="text-[11px] text-slate-500">
+                      Upload or change the lead's photo. It will appear on lead cards, view pages, and lists.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => editFileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-100 text-[#003884] border border-slate-300 shadow-2xs transition-colors cursor-pointer"
+                    >
+                      <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>{editFormData.photo_url ? 'Change Photo' : 'Upload & Crop Photo'}</span>
+                    </button>
+                    {editFormData.photo_url && (
+                      <button
+                        type="button"
+                        onClick={() => setEditFormData((prev: any) => ({ ...prev, photo_url: '' }))}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        <span>Remove Photo</span>
+                      </button>
+                    )}
+                    <input
+                      ref={editFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handlePhotoFileSelect(f, editingLeadId || undefined);
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Form Grid matching Add Lead fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Branch */}
@@ -2468,6 +2721,157 @@ const AllLeadsPage: React.FC = () => {
           </div>
         </div>
         , document.body)}
+
+      {/* Hidden File Input for Quick Avatar Click on Lead Cards */}
+      <input
+        ref={quickFileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handlePhotoFileSelect(f, targetPhotoLeadId || undefined);
+          e.target.value = '';
+        }}
+      />
+
+      {/* Interactive Photo Crop Modal */}
+      {isCropModalOpen && createPortal(
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200">
+            {/* Header */}
+            <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Crop Profile Photo</h3>
+                <p className="text-[11px] text-slate-500">Drag to position, use slider to zoom</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCropModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Canvas Box */}
+            <div className="p-5 space-y-4">
+              <div className="flex justify-center select-none">
+                <canvas
+                  ref={cropCanvasRef}
+                  width={320}
+                  height={320}
+                  onMouseDown={(e) => {
+                    setIsDragging(true);
+                    setDragStart({ x: e.clientX - cropPan.x, y: e.clientY - cropPan.y });
+                  }}
+                  onMouseMove={(e) => {
+                    if (!isDragging) return;
+                    setCropPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+                  }}
+                  onMouseUp={() => setIsDragging(false)}
+                  onMouseLeave={() => setIsDragging(false)}
+                  onTouchStart={(e) => {
+                    if (e.touches.length === 1) {
+                      setIsDragging(true);
+                      setDragStart({ x: e.touches[0].clientX - cropPan.x, y: e.touches[0].clientY - cropPan.y });
+                    }
+                  }}
+                  onTouchMove={(e) => {
+                    if (!isDragging || e.touches.length !== 1) return;
+                    setCropPan({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y });
+                  }}
+                  onTouchEnd={() => setIsDragging(false)}
+                  className="rounded-xl shadow-md cursor-grab active:cursor-grabbing border border-slate-700 touch-none"
+                  style={{ width: '320px', height: '320px' }}
+                />
+              </div>
+
+              {/* Controls */}
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                    </svg>
+                    Zoom
+                  </span>
+                  <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                    <button
+                      type="button"
+                      onClick={() => setCropZoom((z) => Math.max(1, +(z - 0.1).toFixed(2)))}
+                      className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="range"
+                      min="1"
+                      max="3"
+                      step="0.05"
+                      value={cropZoom}
+                      onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                      className="w-full accent-blue-600 cursor-pointer"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCropZoom((z) => Math.min(3, +(z + 0.1).toFixed(2)))}
+                      className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-600 w-10 text-right">{cropZoom.toFixed(1)}x</span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setCropRotation((r) => (r + 90) % 360)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Rotate 90°</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCropZoom(1);
+                      setCropPan({ x: 0, y: 0 });
+                      setCropRotation(0);
+                    }}
+                    className="text-xs text-slate-500 hover:text-slate-800 font-semibold cursor-pointer"
+                  >
+                    Reset Position
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCropModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyCrop}
+                  className="px-5 py-2 text-xs font-bold rounded-xl bg-[#003884] hover:bg-blue-800 text-white shadow-sm transition-colors cursor-pointer"
+                >
+                  Crop & Save Photo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </CrmLayout>
   );
 };

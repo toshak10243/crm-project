@@ -32,6 +32,7 @@ interface LeadRecord {
   followup_time_from?: string;
   followup_time_to?: string;
   followup_remark?: string;
+  photo_url?: string;
   status_name?: string;
   status_color?: string;
   assigned_to_name?: string;
@@ -488,12 +489,22 @@ export const FollowupsPage: React.FC<FollowupPageProps> = ({ todayOnly = false }
                     {/* Left: Avatar + Name + Status + Followup Date + Time */}
                     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
                       {/* Avatar & Lead Name */}
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-[#003884] flex items-center justify-center text-white flex-shrink-0">
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                          </svg>
-                        </span>
+                      <div className="flex items-center gap-2.5">
+                        {lead.photo_url ? (
+                          <img
+                            src={lead.photo_url}
+                            alt={lead.name}
+                            className="w-8 h-8 rounded-full object-cover border border-blue-200 shadow-2xs flex-shrink-0"
+                          />
+                        ) : (
+                          <span className="w-8 h-8 rounded-full bg-[#003884] flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-2xs">
+                            {lead.name ? lead.name.charAt(0).toUpperCase() : (
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </span>
+                        )}
                         <h3
                           className="text-base font-bold text-slate-900 hover:text-blue-700 cursor-pointer tracking-tight"
                           onClick={() => navigate(`/master/viewLead/${lead.id}`)}

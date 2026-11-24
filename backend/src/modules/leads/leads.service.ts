@@ -263,6 +263,7 @@ export class LeadsService {
         l.followup_time_from,
         l.followup_time_to,
         l.followup_remark,
+        l.photo_url,
         ls.name AS status_name,
         ls.color AS status_color,
         u.name AS assigned_to_name,
@@ -617,8 +618,9 @@ export class LeadsService {
           followup_time_to = $20,
           assigned_to = $21,
           followup_remark = $22,
+          photo_url = $23,
           updated_at = NOW()
-        WHERE id = $23
+        WHERE id = $24
         RETURNING *
       `;
 
@@ -626,6 +628,9 @@ export class LeadsService {
         ...(old.custom_data || {}),
         ...(body.custom_data || {}),
       };
+
+      const finalPhotoUrl =
+        body.photo_url !== undefined ? (body.photo_url?.trim() || null) : old.photo_url;
 
       const params = [
         fullName,
@@ -650,6 +655,7 @@ export class LeadsService {
         body.followup_time_to || null,
         body.assigned_to || null,
         body.followup_remark || null,
+        finalPhotoUrl,
         leadId,
       ];
 
@@ -992,6 +998,7 @@ export class LeadsService {
         l.city,
         l.lead_from,
         l.created_at,
+        l.photo_url,
         ls.name AS status_name,
         ls.color AS status_color,
         u.name AS counselor_name
