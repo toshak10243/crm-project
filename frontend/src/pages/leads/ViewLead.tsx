@@ -65,16 +65,27 @@ const ViewLeadPage: React.FC = () => {
   }
 
   if (error || !lead) {
+    const errorMsg = (error as any)?.response?.data?.message || 'Lead not found';
     return (
       <CrmLayout>
-        <div className="p-12 text-center bg-white rounded-xl border border-slate-200">
-          <h3 className="text-sm font-bold text-slate-800">Lead not found</h3>
-          <button
-            onClick={() => navigate('/crm/all-leads')}
-            className="mt-4 px-4 py-2 bg-[#0b3b75] text-white text-xs font-semibold rounded-lg"
-          >
-            Back to Leads
-          </button>
+        <div className="p-12 text-center bg-white rounded-xl border border-slate-200 space-y-3">
+          <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-sm font-bold text-slate-800">{errorMsg}</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            The requested lead could not be loaded. Please ensure the lead exists and you have permission to view it.
+          </p>
+          <div className="pt-2 flex items-center justify-center gap-3">
+            <button
+              onClick={() => navigate('/crm/all-leads')}
+              className="px-4 py-2 bg-[#0b3b75] hover:bg-blue-800 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+            >
+              Back to Leads
+            </button>
+          </div>
         </div>
       </CrmLayout>
     );

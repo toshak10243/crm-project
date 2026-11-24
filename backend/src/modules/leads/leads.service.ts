@@ -439,28 +439,40 @@ export class LeadsService {
 
     const lead = res.rows[0];
 
-    // Also fetch remarks history
-    const remarks = await pool.query(
-      `SELECT id, remark, created_by_name, created_at
-       FROM lead_remarks
-       WHERE lead_id = $1
-       ORDER BY created_at DESC`,
-      [leadId],
-    );
+    // Also fetch remarks history safely
+    let remarksRows: any[] = [];
+    try {
+      const remarks = await pool.query(
+        `SELECT id, remark, created_by_name, created_at
+         FROM lead_remarks
+         WHERE lead_id = $1
+         ORDER BY created_at DESC`,
+        [leadId],
+      );
+      remarksRows = remarks.rows;
+    } catch {
+      remarksRows = [];
+    }
 
-    // Also fetch activity history
-    const history = await pool.query(
-      `SELECT id, event_type, lead_status, event_date, data, updated_by_name, created_at
-       FROM lead_activity_history
-       WHERE lead_id = $1
-       ORDER BY created_at DESC`,
-      [leadId],
-    );
+    // Also fetch activity history safely
+    let historyRows: any[] = [];
+    try {
+      const history = await pool.query(
+        `SELECT id, event_type, lead_status, event_date, data, updated_by_name, created_at
+         FROM lead_activity_history
+         WHERE lead_id = $1
+         ORDER BY created_at DESC`,
+        [leadId],
+      );
+      historyRows = history.rows;
+    } catch {
+      historyRows = [];
+    }
 
     return {
       ...lead,
-      remarks: remarks.rows,
-      history: history.rows,
+      remarks: remarksRows,
+      history: historyRows,
     };
   }
 
@@ -657,12 +669,16 @@ export class LeadsService {
         'Lead From': body.lead_from || old.lead_from || 'N/A',
       };
 
-      await client.query(
-        `INSERT INTO lead_activity_history (
-          lead_id, event_type, lead_status, data, updated_by_name
-        ) VALUES ($1, $2, $3, $4, $5)`,
-        [leadId, 'Lead Updated', statusName, JSON.stringify(historyData), user.name || 'Admin'],
-      );
+      try {
+        await client.query(
+          `INSERT INTO lead_activity_history (
+            lead_id, event_type, lead_status, data, updated_by_name
+          ) VALUES ($1, $2, $3, $4, $5)`,
+          [leadId, 'Lead Updated', statusName, JSON.stringify(historyData), user.name || 'Admin'],
+        );
+      } catch (historyErr) {
+        // Safe fallback if history table not present
+      }
 
       // If remark changed or followup remark entered, also add to remarks table
       if (body.remark && body.remark !== old.remark) {
