@@ -135,6 +135,7 @@ const AllLeadsPage: React.FC = () => {
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<any>(null);
   const [editLeadHistory, setEditLeadHistory] = useState<any[]>([]);
+  const [editModalError, setEditModalError] = useState<string | null>(null);
 
   // Remarks inline inputs and History modal state
   const [remarkInputs, setRemarkInputs] = useState<Record<string, string>>({});
@@ -513,6 +514,7 @@ const AllLeadsPage: React.FC = () => {
   const handleOpenEditLead = async (lead: LeadRecord) => {
     try {
       setActiveMenuId(null);
+      setEditModalError(null);
       setEditingLeadId(lead.id);
 
       // Fetch full details
@@ -530,7 +532,11 @@ const AllLeadsPage: React.FC = () => {
         gender: data.gender || '',
         date_of_birth: data.date_of_birth ? data.date_of_birth.slice(0, 10) : '',
         city: data.city || '',
-        lead_received_on: data.lead_received_on ? data.lead_received_on.slice(0, 10) : '',
+        lead_received_on:
+          data.custom_data?.lead_received_channel ||
+          (data.lead_received_on && !/^\d{4}-\d{2}-\d{2}/.test(String(data.lead_received_on))
+            ? data.lead_received_on
+            : ''),
         status_id: data.status_id || '',
         lead_from: data.lead_from || '',
         campaign_id: data.campaign_id || '',
@@ -559,10 +565,12 @@ const AllLeadsPage: React.FC = () => {
   // Update Lead Mutation
   const updateLeadMutation = useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: any }) => {
+      setEditModalError(null);
       const res = await api.patch(`/leads/${id}`, payload);
       return res.data;
     },
     onSuccess: () => {
+      setEditModalError(null);
       setAlertMessage({ text: 'Lead updated successfully!', type: 'success' });
       setEditingLeadId(null);
       setEditFormData(null);
@@ -572,7 +580,10 @@ const AllLeadsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['all-followups'] });
     },
     onError: (err: any) => {
-      setAlertMessage({ text: err.response?.data?.message || 'Failed to update lead', type: 'error' });
+      const raw = err.response?.data?.message;
+      const msg = Array.isArray(raw) ? raw.join(', ') : raw || 'Failed to update lead';
+      setEditModalError(msg);
+      setAlertMessage({ text: msg, type: 'error' });
     },
   });
 
@@ -2110,7 +2121,7 @@ const AllLeadsPage: React.FC = () => {
                       className="hidden"
                       onChange={(e) => {
                         const f = e.target.files?.[0];
-                        if (f) handlePhotoFileSelect(f, editingLeadId || undefined);
+                        if (f) handlePhotoFileSelect(f);
                         e.target.value = '';
                       }}
                     />
@@ -2591,6 +2602,11 @@ const AllLeadsPage: React.FC = () => {
             </div>
 
             {/* Modal Footer matching SS 5 */}
+            {editModalError && (
+              <div className="mx-6 mb-2 p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+                {editModalError}
+              </div>
+            )}
             <div className="px-6 py-4 bg-slate-50/60 border-t border-slate-100 flex items-center justify-end gap-3 flex-shrink-0">
               <button
                 type="button"

@@ -4,6 +4,39 @@ import { CreateLeadDto } from './dto/create-lead.dto';
 
 @Injectable()
 export class LeadsService {
+  private isValidUuid(val: any): boolean {
+    return typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
+  }
+
+  private toUuidOrNull(val: any): string | null {
+    return this.isValidUuid(val) ? String(val).trim() : null;
+  }
+
+  private toDateOrNull(val: any): string | null {
+    if (typeof val !== 'string') return null;
+    const s = val.trim();
+    if (!s || !/^\d{4}-\d{2}-\d{2}/.test(s)) return null;
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : s;
+  }
+
+  private toTimeOrNull(val: any): string | null {
+    if (typeof val !== 'string') return null;
+    const s = val.trim();
+    if (!s) return null;
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s;
+    const ampm = s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (ampm) {
+      let h = parseInt(ampm[1], 10);
+      const m = ampm[2];
+      const period = ampm[3].toUpperCase();
+      if (period === 'PM' && h < 12) h += 12;
+      if (period === 'AM' && h === 12) h = 0;
+      return `${String(h).padStart(2, '0')}:${m}`;
+    }
+    return null;
+  }
+
   // Get all dynamic form options directly from database
   async getFormOptions(pool: Pool) {
     const branches = await pool.query(
@@ -76,11 +109,16 @@ export class LeadsService {
         if (defaultStatus.rows.length > 0) finalStatusId = defaultStatus.rows[0].id;
       }
 
-      // Merge feedback / address into custom_data if present
+      // Merge feedback / address / received channel into custom_data if present
+      const receivedOnDate = this.toDateOrNull(dto.lead_received_on);
+      const receivedChannel =
+        dto.lead_received_on && !receivedOnDate ? String(dto.lead_received_on).trim() : undefined;
+
       const finalCustomData = {
         ...(dto.custom_data || {}),
         ...(dto.address ? { address: dto.address } : {}),
         ...(dto.feedback ? { feedback: dto.feedback } : {}),
+        ...(receivedChannel ? { lead_received_channel: receivedChannel } : {}),
       };
 
       // Parameterized INSERT query - 100% SQL injection safe
@@ -93,14 +131,15 @@ export class LeadsService {
           assigned_to, assigned_by, assigned_at, followup_remark, created_by, photo_url
         ) VALUES (
           $1, $2, $3, $4, $5, $6,
-          $7, $8, $9, $10, $11, NOW(),
-          $12, $13, $14, $15, $16,
-          $17, $18, $19, $20,
-          $21, $22, CASE WHEN $21::uuid IS NOT NULL THEN NOW() ELSE NULL END, $23, $24, $25
+          $7, $8, $9, $10, $11, COALESCE($12::timestamptz, NOW()),
+          $13, $14, $15, $16, $17,
+          $18, $19, $20, $21,
+          $22, $23, CASE WHEN $22::uuid IS NOT NULL THEN NOW() ELSE NULL END, $24, $25, $26
         ) RETURNING id, lead_number, name, phone, email, created_at
       `;
 
       const fullPhone = dto.country_code ? `${dto.country_code} ${dto.phone}`.trim() : dto.phone;
+      const safeAssignedTo = this.toUuidOrNull(dto.assigned_to);
 
       const params = [
         fullName,
@@ -109,22 +148,23 @@ export class LeadsService {
         dto.last_name || null,
         fullPhone,
         dto.email || null,
-        dto.branch_id || null,
+        this.toUuidOrNull(dto.branch_id),
         dto.gender || null,
-        dto.date_of_birth || null,
+        this.toDateOrNull(dto.date_of_birth),
         dto.city || null,
         dto.address || null,
-        finalStatusId,
+        receivedOnDate,
+        this.toUuidOrNull(finalStatusId),
         dto.lead_from || null,
-        dto.campaign_id || null,
+        this.toUuidOrNull(dto.campaign_id),
         dto.remark || null,
         dto.refer_by || null,
         JSON.stringify(finalCustomData),
-        dto.next_followup_date || null,
-        dto.followup_time_from || null,
-        dto.followup_time_to || null,
-        dto.assigned_to || null,
-        dto.assigned_to ? currentUserId : null,
+        this.toDateOrNull(dto.next_followup_date),
+        this.toTimeOrNull(dto.followup_time_from),
+        this.toTimeOrNull(dto.followup_time_to),
+        safeAssignedTo,
+        safeAssignedTo ? currentUserId : null,
         dto.followup_remark || null,
         currentUserId,
         dto.photo_url || null,
@@ -579,20 +619,87 @@ export class LeadsService {
 
   // Update lead details from Edit Lead modal
   async updateLead(pool: Pool, leadId: string, body: any, user: any) {
+    if (!this.isValidUuid(leadId)) {
+      throw new BadRequestException('Invalid lead ID');
+    }
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
-      const currentRes = await client.query('SELECT * FROM leads WHERE id = $1', [leadId]);
+      const currentRes = await client.query(
+        'SELECT * FROM leads WHERE id = $1 AND is_deleted = false',
+        [leadId],
+      );
       if (currentRes.rows.length === 0) {
         throw new BadRequestException('Lead not found');
       }
       const old = currentRes.rows[0];
 
-      const fullName = [body.first_name, body.middle_name, body.last_name]
-        .filter(Boolean)
-        .join(' ')
-        .trim() || old.name;
+      const hasProp = (k: string) => Object.prototype.hasOwnProperty.call(body, k) && body[k] !== undefined;
+      const pickStr = (k: string, prev: string | null) =>
+        hasProp(k) ? (typeof body[k] === 'string' ? body[k].trim() || null : body[k] || null) : prev;
+
+      const firstName = pickStr('first_name', old.first_name);
+      const middleName = pickStr('middle_name', old.middle_name);
+      const lastName = pickStr('last_name', old.last_name);
+
+      const fullName =
+        hasProp('first_name') || hasProp('middle_name') || hasProp('last_name')
+          ? [firstName, middleName, lastName].filter(Boolean).join(' ').trim() || old.name
+          : hasProp('name')
+            ? String(body.name || '').trim() || old.name
+            : old.name;
+
+      // Handle lead_received_on safely: valid dates update timestamp column; channel strings go into custom_data
+      const receivedOnDate = hasProp('lead_received_on') ? this.toDateOrNull(body.lead_received_on) : null;
+      const receivedChannel =
+        hasProp('lead_received_on') && !receivedOnDate && typeof body.lead_received_on === 'string' && body.lead_received_on.trim()
+          ? body.lead_received_on.trim()
+          : undefined;
+
+      const finalCustomData: Record<string, any> = {
+        ...(old.custom_data || {}),
+        ...(body.custom_data && typeof body.custom_data === 'object' ? body.custom_data : {}),
+      };
+      if (receivedChannel !== undefined) {
+        finalCustomData.lead_received_channel = receivedChannel;
+      }
+      if (hasProp('address')) {
+        finalCustomData.address = body.address || '';
+      }
+      if (hasProp('feedback')) {
+        finalCustomData.feedback = body.feedback || '';
+      }
+      if (hasProp('appointment_date')) {
+        finalCustomData.appointment_date = body.appointment_date || '';
+      }
+      if (hasProp('service_type')) {
+        finalCustomData.service_type = body.service_type || '';
+      }
+
+      const finalStatusId = hasProp('status_id')
+        ? this.toUuidOrNull(body.status_id) || old.status_id
+        : old.status_id;
+
+      const finalBranchId = hasProp('branch_id') ? this.toUuidOrNull(body.branch_id) : old.branch_id;
+      const finalCampaignId = hasProp('campaign_id') ? this.toUuidOrNull(body.campaign_id) : old.campaign_id;
+      const finalAssignedTo = hasProp('assigned_to') ? this.toUuidOrNull(body.assigned_to) : old.assigned_to;
+
+      const finalDob = hasProp('date_of_birth') ? this.toDateOrNull(body.date_of_birth) : old.date_of_birth;
+      const finalNextFollowup = hasProp('next_followup_date')
+        ? this.toDateOrNull(body.next_followup_date)
+        : old.next_followup_date;
+      const finalTimeFrom = hasProp('followup_time_from')
+        ? this.toTimeOrNull(body.followup_time_from)
+        : old.followup_time_from;
+      const finalTimeTo = hasProp('followup_time_to')
+        ? this.toTimeOrNull(body.followup_time_to)
+        : old.followup_time_to;
+
+      const finalPhotoUrl =
+        hasProp('photo_url') ? (typeof body.photo_url === 'string' ? body.photo_url.trim() || null : null) : old.photo_url;
+
+      const assignedChanged = finalAssignedTo && finalAssignedTo !== old.assigned_to;
 
       const updateSql = `
         UPDATE leads SET
@@ -606,55 +713,58 @@ export class LeadsService {
           gender = $8,
           date_of_birth = $9,
           city = $10,
-          lead_received_on = COALESCE($11, lead_received_on),
-          status_id = $12,
-          lead_from = $13,
-          campaign_id = $14,
-          remark = $15,
-          refer_by = $16,
-          custom_data = $17,
-          next_followup_date = $18,
-          followup_time_from = $19,
-          followup_time_to = $20,
-          assigned_to = $21,
-          followup_remark = $22,
-          photo_url = $23,
+          address = $11,
+          lead_received_on = COALESCE($12::timestamptz, lead_received_on),
+          status_id = $13,
+          lead_from = $14,
+          campaign_id = $15,
+          remark = $16,
+          refer_by = $17,
+          custom_data = $18,
+          next_followup_date = $19,
+          followup_time_from = $20,
+          followup_time_to = $21,
+          assigned_to = $22,
+          assigned_by = CASE WHEN $23::boolean THEN $24::uuid ELSE assigned_by END,
+          assigned_at = CASE WHEN $23::boolean THEN NOW() ELSE assigned_at END,
+          followup_remark = $25,
+          photo_url = $26,
           updated_at = NOW()
-        WHERE id = $24
+        WHERE id = $27
         RETURNING *
       `;
 
-      const finalCustomData = {
-        ...(old.custom_data || {}),
-        ...(body.custom_data || {}),
-      };
-
-      const finalPhotoUrl =
-        body.photo_url !== undefined ? (body.photo_url?.trim() || null) : old.photo_url;
+      const finalPhone = pickStr('phone', old.phone) || old.phone;
+      const finalCity = pickStr('city', old.city);
+      const finalLeadFrom = pickStr('lead_from', old.lead_from);
+      const finalRemark = pickStr('remark', old.remark);
 
       const params = [
         fullName,
-        body.first_name || null,
-        body.middle_name || null,
-        body.last_name || null,
-        body.phone || old.phone,
-        body.email || null,
-        body.branch_id || null,
-        body.gender || null,
-        body.date_of_birth || null,
-        body.city || null,
-        body.lead_received_on || null,
-        body.status_id || old.status_id,
-        body.lead_from || null,
-        body.campaign_id || null,
-        body.remark || null,
-        body.refer_by || null,
+        firstName,
+        middleName,
+        lastName,
+        finalPhone,
+        pickStr('email', old.email),
+        finalBranchId,
+        pickStr('gender', old.gender),
+        finalDob,
+        finalCity,
+        pickStr('address', old.address),
+        receivedOnDate,
+        finalStatusId,
+        finalLeadFrom,
+        finalCampaignId,
+        finalRemark,
+        pickStr('refer_by', old.refer_by),
         JSON.stringify(finalCustomData),
-        body.next_followup_date || null,
-        body.followup_time_from || null,
-        body.followup_time_to || null,
-        body.assigned_to || null,
-        body.followup_remark || null,
+        finalNextFollowup,
+        finalTimeFrom,
+        finalTimeTo,
+        finalAssignedTo,
+        Boolean(assignedChanged),
+        this.toUuidOrNull(user?.id),
+        pickStr('followup_remark', old.followup_remark),
         finalPhotoUrl,
         leadId,
       ];
@@ -662,17 +772,20 @@ export class LeadsService {
       const updateRes = await client.query(updateSql, params);
 
       // Record Activity History
-      const statusRes = await client.query('SELECT name FROM lead_statuses WHERE id = $1', [body.status_id || old.status_id]);
-      const statusName = statusRes.rows[0]?.name || 'UPDATED';
+      let statusName = 'UPDATED';
+      if (finalStatusId) {
+        const statusRes = await client.query('SELECT name FROM lead_statuses WHERE id = $1', [finalStatusId]);
+        statusName = statusRes.rows[0]?.name || 'UPDATED';
+      }
 
       const historyData = {
         'Lead Status': statusName,
-        'Phone Number': body.phone || old.phone,
+        'Phone Number': finalPhone,
         'Name': fullName,
-        'City': body.city || old.city || 'N/A',
-        'Remark': body.remark || old.remark || '',
-        'Assigned To': user.name || 'Admin',
-        'Lead From': body.lead_from || old.lead_from || 'N/A',
+        'City': finalCity || 'N/A',
+        'Remark': finalRemark || '',
+        'Assigned To': user?.name || 'Admin',
+        'Lead From': finalLeadFrom || 'N/A',
       };
 
       try {
@@ -680,19 +793,23 @@ export class LeadsService {
           `INSERT INTO lead_activity_history (
             lead_id, event_type, lead_status, data, updated_by_name
           ) VALUES ($1, $2, $3, $4, $5)`,
-          [leadId, 'Lead Updated', statusName, JSON.stringify(historyData), user.name || 'Admin'],
+          [leadId, 'Lead Updated', statusName, JSON.stringify(historyData), user?.name || 'Admin'],
         );
-      } catch (historyErr) {
+      } catch {
         // Safe fallback if history table not present
       }
 
-      // If remark changed or followup remark entered, also add to remarks table
-      if (body.remark && body.remark !== old.remark) {
-        await client.query(
-          `INSERT INTO lead_remarks (lead_id, remark, created_by, created_by_name)
-           VALUES ($1, $2, $3, $4)`,
-          [leadId, body.remark, user.id, user.name || 'Admin'],
-        );
+      // If remark changed, also add to remarks table safely
+      if (finalRemark && finalRemark !== old.remark) {
+        try {
+          await client.query(
+            `INSERT INTO lead_remarks (lead_id, remark, created_by, created_by_name)
+             VALUES ($1, $2, $3, $4)`,
+            [leadId, finalRemark, this.toUuidOrNull(user?.id), user?.name || 'Admin'],
+          );
+        } catch {
+          // Safe fallback if remarks insert fails
+        }
       }
 
       await client.query('COMMIT');
