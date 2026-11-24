@@ -337,17 +337,42 @@ const AddLeadPage: React.FC = () => {
   // Create lead mutation
   const createLeadMutation = useMutation({
     mutationFn: async (payload: any) => {
-      const fullPhone = `${payload.country_code} ${payload.phone}`.trim();
+      const fullPhone = `${payload.country_code || '+91'} ${payload.phone}`.trim();
       // If user typed custom "lead from", save that or selected
-      const finalLeadFrom = payload.lead_from_custom.trim()
+      const finalLeadFrom = payload.lead_from_custom?.trim()
         ? payload.lead_from_custom.trim()
         : payload.lead_from;
 
-      const res = await api.post('/leads', {
-        ...payload,
+      // Construct a clean DTO payload with no empty strings or unwhitelisted keys
+      const cleanData: Record<string, any> = {
+        first_name: payload.first_name.trim(),
         phone: fullPhone,
-        lead_from: finalLeadFrom,
-      });
+      };
+
+      if (payload.middle_name?.trim()) cleanData.middle_name = payload.middle_name.trim();
+      if (payload.last_name?.trim()) cleanData.last_name = payload.last_name.trim();
+      if (payload.email?.trim()) cleanData.email = payload.email.trim();
+      if (payload.branch_id?.trim() && payload.branch_id !== 'all') cleanData.branch_id = payload.branch_id.trim();
+      if (payload.gender?.trim()) cleanData.gender = payload.gender.trim();
+      if (payload.date_of_birth?.trim()) cleanData.date_of_birth = payload.date_of_birth.trim();
+      if (payload.city?.trim()) cleanData.city = payload.city.trim();
+      if (payload.address?.trim()) cleanData.address = payload.address.trim();
+      if (payload.feedback?.trim()) cleanData.feedback = payload.feedback.trim();
+      if (payload.lead_received_on?.trim()) cleanData.lead_received_on = payload.lead_received_on.trim();
+      if (payload.status_id?.trim() && payload.status_id !== 'all') cleanData.status_id = payload.status_id.trim();
+      if (finalLeadFrom?.trim()) cleanData.lead_from = finalLeadFrom.trim();
+      if (payload.campaign_id?.trim() && payload.campaign_id !== 'all') cleanData.campaign_id = payload.campaign_id.trim();
+      if (payload.remark?.trim()) cleanData.remark = payload.remark.trim();
+      if (payload.refer_by?.trim()) cleanData.refer_by = payload.refer_by.trim();
+      if (payload.custom_data && Object.keys(payload.custom_data).length > 0) cleanData.custom_data = payload.custom_data;
+      if (payload.next_followup_date?.trim()) cleanData.next_followup_date = payload.next_followup_date.trim();
+      if (payload.followup_time_from?.trim()) cleanData.followup_time_from = payload.followup_time_from.trim();
+      if (payload.followup_time_to?.trim()) cleanData.followup_time_to = payload.followup_time_to.trim();
+      if (payload.assigned_to?.trim() && payload.assigned_to !== 'all') cleanData.assigned_to = payload.assigned_to.trim();
+      if (payload.followup_remark?.trim()) cleanData.followup_remark = payload.followup_remark.trim();
+      if (payload.photo_url?.trim()) cleanData.photo_url = payload.photo_url.trim();
+
+      const res = await api.post('/leads', cleanData);
       return res.data;
     },
     onSuccess: () => {
@@ -365,7 +390,11 @@ const AddLeadPage: React.FC = () => {
       }, 700);
     },
     onError: (err: any) => {
-      setErrorMsg(err.response?.data?.message || 'Failed to create lead. Please check required fields.');
+      const backendMsg = err.response?.data?.message;
+      const formatted = Array.isArray(backendMsg)
+        ? backendMsg.join(' • ')
+        : backendMsg || 'Failed to create lead. Please check required fields.';
+      setErrorMsg(formatted);
     },
   });
 
