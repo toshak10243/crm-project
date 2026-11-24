@@ -771,7 +771,7 @@ export class LeadsService {
       branchId?: string;
       source?: string;
     }) => {
-      const clauses: string[] = ['1=1'];
+      const clauses: string[] = ['l.is_deleted = false'];
       const p: any[] = [];
       let idx = 1;
 
@@ -822,13 +822,13 @@ export class LeadsService {
 
     // 2. Today Followups
     const todayFollowupsRes = await pool.query(
-      `SELECT count(*) FROM leads l WHERE DATE(l.next_followup_date) = CURRENT_DATE`,
+      `SELECT count(*) FROM leads l WHERE DATE(l.next_followup_date) = CURRENT_DATE AND l.is_deleted = false`,
     );
     const todayFollowup = parseInt(todayFollowupsRes.rows[0]?.count || '0', 10);
 
     // 3. All Followups (pending future or overdue)
     const allFollowupsRes = await pool.query(
-      `SELECT count(*) FROM leads l WHERE l.next_followup_date IS NOT NULL`,
+      `SELECT count(*) FROM leads l WHERE l.next_followup_date IS NOT NULL AND l.is_deleted = false`,
     );
     const allFollowup = parseInt(allFollowupsRes.rows[0]?.count || '0', 10);
 
@@ -837,7 +837,8 @@ export class LeadsService {
       `SELECT count(*) FROM leads l 
        WHERE l.date_of_birth IS NOT NULL 
          AND EXTRACT(MONTH FROM l.date_of_birth) = EXTRACT(MONTH FROM CURRENT_DATE) 
-         AND EXTRACT(DAY FROM l.date_of_birth) = EXTRACT(DAY FROM CURRENT_DATE)`,
+         AND EXTRACT(DAY FROM l.date_of_birth) = EXTRACT(DAY FROM CURRENT_DATE)
+         AND l.is_deleted = false`,
     );
     const todayBirthday = parseInt(todayBirthdaysRes.rows[0]?.count || '0', 10);
 
@@ -916,7 +917,7 @@ export class LeadsService {
         TO_CHAR(ds.day, 'DD/MM') AS date,
         COUNT(l.id) AS leads
       FROM date_series ds
-      LEFT JOIN leads l ON DATE(l.created_at) = ds.day ${trendLeadFilters.join(' ')}
+      LEFT JOIN leads l ON DATE(l.created_at) = ds.day AND l.is_deleted = false ${trendLeadFilters.join(' ')}
       GROUP BY ds.day
       ORDER BY ds.day ASC
     `;
@@ -1058,7 +1059,7 @@ export class LeadsService {
         u.role,
         COUNT(DISTINCT l.id) AS leads_handled
       FROM users u
-      LEFT JOIN leads l ON l.assigned_to = u.id ${perfLeadClauses.join(' ')}
+      LEFT JOIN leads l ON l.assigned_to = u.id AND l.is_deleted = false ${perfLeadClauses.join(' ')}
       WHERE u.is_active = true ${perfRoleClause}
       GROUP BY u.id, u.name, u.role
       ORDER BY leads_handled DESC
